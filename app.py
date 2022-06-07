@@ -44,12 +44,14 @@ def main():
         def get_data():
             if platform_mass > 1:
                 df = pd.read_csv(uploaded_file, sep='\s+', header=None)
+                
                 cols = len(df.axes[1])
                 if cols == 10:
                 #df = pd.read_csv("data.txt", sep=" ", header=None, names=["A", "B"])
                     df.columns = ['Time', 'Col_1', 'Mass_1', 'Mass_2', 'Mass_3', 'Mass_4', 'Col_6', 'Col_7', 'Col_8', 'Col_9']
                 if cols == 11:
                     df.columns = ['Time', 'Col_1', 'Mass_1', 'Mass_2', 'Mass_3', 'Mass_4', 'Col_6', 'Col_7', 'Col_8', 'Col_9','Col_10']
+                
                 C = 406.831
                 #sr = 1000
                 resolution = 16
@@ -75,6 +77,7 @@ def main():
                 #df = df[(df['Mass_Sum'] > 50.0)]
                 #df['Mass_Sum'] = ((df['Mass_1'] + df['Mass_2'] + df['Mass_3'] + df['Mass_4']) ) / 2  - platform_mass
                 df['Force'] = df['Mass_Sum'] * 9.81
+                #df = df[df['Force'] > 500]
                 #Find Acceleration
                 df['Acceleration'] = (df['Force'] / pm) - 9.81
                 #Find Velocity
@@ -343,17 +346,19 @@ def main():
                 # jump_depending_impluse = (velocity_momentum ** 2) / (9.81 * 2)
 
                 #a= (Σy)(Σx2) - (Σx)(Σxy)/ n(Σx2) - (Σx)2
-                sX= df_brushed['Rows_Count'].sum()
                 #sX= (df_brushed.loc[user_time_input_min_main_table:user_time_input_max_main_table:1,'Rows_Count'].sum())/1000
 
                 #sX2=(df.loc([user_time_input_min_main_table:user_time_input_max_main_table:1,'Time'])**2).sum())/1000
-                df_brushed['Rows_Count2']=df_brushed['Rows_Count']**2
-                sX2= df_brushed['Rows_Count2'].sum()
-                sXY= (df_brushed['Rows_Count'] * df_brushed['Force']).sum()
-               
+
 
                 #sX= ((user_time_input_max_main_table - user_time_input_min_main_table) / 1000).sum()
                 #sx2= (((user_time_input_max_main_table - user_time_input_min_main_table) / 1000)) * * 2
+
+
+                sX= df_brushed['Rows_Count'].sum()/1000
+                df_brushed['Rows_Count2']=(df_brushed['Rows_Count']/1000)**2
+                sX2= df_brushed['Rows_Count2'].sum()
+                sXY= ((df_brushed['Rows_Count']/1000) * df_brushed['Force']).sum()
                 sY= df_brushed['Force'].sum()
                 
                 n = user_time_input_max_main_table - user_time_input_min_main_table
@@ -387,8 +392,13 @@ def main():
                             st.write('Net Impulse:', round(impulse_grf1 - impulse_bw1,2))
                             #st.write('velocity_momentum:', round(velocity_momentum1,2))
                             st.write('Jump (Impluse):', round(jump_depending_impluse1,4))
-                            #st.write('sX:', sX, 'sY', sY, 'n', n, 'sX2', sX2, 'sXY', sXY)
-                            #st.write('b',b)
+                            st.write('sX:', sX)
+                            st.write('sY', sY)
+                            st.write('n', n)
+                            st.write('sX2', sX2)
+                            st.write('sXY', sXY)
+                            st.write('b',b)
+                            
                             
                     with col2:
                             st.write('Force-Mean:', round(df_brushed["Force"].mean(),2))
