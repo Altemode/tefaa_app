@@ -24,7 +24,7 @@ st.set_page_config(
 #st.title(body, anchor=None)
 #st.title('This is a title')
 #st.subheader(body, anchor=None)
-st.subheader('School of Physical Education and Sports Science')
+st.subheader('School of Physical Education and Sports Science1')
 
 def main():
     page = st.sidebar.selectbox("Choose a page", ['Unconverted Results', 'Unconverted Center of pressure', 'Converted Results'])
@@ -69,15 +69,8 @@ def main():
                 df['Mass_4'] = df['Mass_4'] * C / (Vfs_4 * ( (2**resolution) - 1 ) )
                 # Calculate the sum of all sensors Mass $ Weight
                 df['Mass_Sum'] = (df['Mass_1'] + df['Mass_2'] + df['Mass_3'] + df['Mass_4']) - platform_mass
-                #df2 = df[df['col2'] < 0]
-                #df[df['B'] > 10]
-                #df[df['Mass_Sum'] > 100]
                 pm = df['Mass_Sum'].mean()
-                #df['Mass_Sum'] = df['Mass_Sum'] - platform_mass
-                #df = df[(df['Mass_Sum'] > 50.0)]
-                #df['Mass_Sum'] = ((df['Mass_1'] + df['Mass_2'] + df['Mass_3'] + df['Mass_4']) ) / 2  - platform_mass
                 df['Force'] = df['Mass_Sum'] * 9.81
-                #df = df[df['Force'] > 500]
                 #Find Acceleration
                 df['Acceleration'] = (df['Force'] / pm) - 9.81
                 #Find Velocity
@@ -101,9 +94,6 @@ def main():
                 
         if a > 1:
             pm, platform_mass, df = get_data()
-            #Create a RMS Step Choice
-            
-            #print len(reader.next())
             if rms_step >0:
                 df['RMS100'] = df.pre_pro_signalEMG.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
             #Find Maximum Velocity
@@ -176,7 +166,6 @@ def main():
             df = pd.DataFrame(df[df_selected_model])
             #Values Sidebar
             with st.sidebar.expander(("Values"), expanded=True):
-                
                 st.write('Body mass is:', round(pm,2), 'kg')
                 st.write('Platform mass is:', round(platform_mass,2), 'kg')
                 st.write('Try starts at:', start_try_time, 'ms')
@@ -187,7 +176,6 @@ def main():
                 st.write('Net Impulse is:', round((impulse_grf - impulse_bw),4), 'N/s')
                 st.write('Jump (Take Off Velocity) is:', round(jump_depending_take_off_velocity, 4), 'm')
                 st.write('Jump (Impulse) is:', round(jump_depending_impluse1, 4), 'm')
-                #st.write('Jump (In Air Time) is:', round(Jump_depending_in_air_time, 4), 'm')
             #Calculate RFD & R_EMG
             with st.sidebar.expander("RFD & EMG"):
                 if closest_zero_velocity > 1:
@@ -196,29 +184,9 @@ def main():
                     closest_zero_velocity_finish = closest_zero_velocity + 500
                     user_time_input_min = st.number_input("Time From ",  value=int(closest_zero_velocity_start))
                     user_time_input_max = st.number_input("Till Time ", value=int(closest_zero_velocity_finish))
-                    dfRFD = df[(df.index >= user_time_input_min) & (df.index < user_time_input_max)]
-                    #Calculate the RFD & R_EMG
-                    if (int(user_time_input_min) < int(user_time_input_max)):
-                        st.write("RFD & EMG Results in Time Range : ", len(dfRFD.index))
-                        for i in range(int(user_time_input_min),int(user_time_input_max),50):
-                            if i != 0:
-                                dfRFD['New_Force_Col'] = dfRFD['Force'].head(i)
-                                dfRFD['New_pre_pro_signalEMG_Col'] = dfRFD['pre_pro_signalEMG'].head(i)
-                                k = max(dfRFD['New_Force_Col'])
-                                df.loc[i,'b'] = max(dfRFD['New_Force_Col']) - min(dfRFD['New_Force_Col'])
-                                c = max(dfRFD['New_pre_pro_signalEMG_Col']) - min(dfRFD['New_pre_pro_signalEMG_Col'])
-                                st.write('RFD', i,'=',  (df.loc[i,'b']/i))
-                                st.write('R-EMG', i,'=',  (c/i))
-                                df.loc[i,'rfd'] = (df.loc[i,'b'] / i)
-                                # data2 = {'Unit': ['results'],
-                                #         'RFD' : [b/i],
-                                #         'R-EMG': [c/i],
-                                #         }
-            #df_data1 = pd.DataFrame(data2)
-            #st.write('auto einai', df['rfd'], k, dfRFD['New_Force_Col'])
+                    dfRFD = df[(df.index >= user_time_input_min) & (df.index < user_time_input_max)]     
             #Create Graph
             with st.expander("Graph Velocity-Force-RMS", expanded=True):
-                
                 brushed = alt.selection_interval(encodings=['x'], name="brushed")
                 base = alt.Chart(df).mark_line().transform_fold(
                     ['Velocity1000', 'Force','RMS100'],
@@ -239,44 +207,15 @@ def main():
                 ).encode(
                     alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100'))
                 )
-                c=alt.layer(line_A, line_B, line_C).resolve_scale(y='independent').properties(width=950)
+                #c=alt.layer(line_A, line_B, line_C).resolve_scale(y='independent').properties(width=950)
                 #Display Chart
                 #st.altair_chart(c, use_container_width=True)
-            #Create Graph
-            # with st.expander("Graph Velocity-Force-RMS.", expanded=True):
-            #     option1 = st.multiselect(
-            #         label='How would you like to be contacted?1',
-            #         options=df.columns)
-            #     st.write(type(option1))
-            #     if option1:
-            #         a = df.loc[df['Time'].isin(option1)]
-                    #df1 = pd.DataFrame(a) 
-                    #st.write(a)
-
-                   # b = df.loc[df['Περιγραφή'].isin(option), 'Ποσό'].sum()
-                    #a = df.loc[df['Περιγραφή'].isin([option]), 'Ποσό'].sum()
-                    #st.write(b)
+            
                 @st.cache(allow_output_mutation=True)
                 def altair_histogram():
-                    # source["category"] = "category_1"
-                    # source.loc[source["symbol"].isin(["AMZN", "IBM"]), "category"] = "category_2"
-
-
-                    # dropdown_category = alt.binding_select(options=list(source["category"].unique()), name=" ")
-                    # dropdown_symbol = alt.binding_select(options=list(source["symbol"].unique()), name=" ")
-
-                    # selection_category = alt.selection_single(fields=["category"], bind=dropdown_category)
-                    # selection_symbol = alt.selection_single(fields=["symbol"], bind=dropdown_symbol)
-
-            #         zoom = alt.selection_interval(
-            #         bind='scales',
-            #         on="[mousedown[event.shiftKey], mouseup] > mousemove",
-            #         translate="[mousedown[event.shiftKey], mouseup] > mousemove!",
-            # )
                     brushed = alt.selection_interval(encodings=["x"], name="brushed")
                     on="[mousedown[!event.shiftKey], mouseup] > mousemove",
-                    translate="[mousedown[!event.shiftKey], mouseup] > mousemove!", 
-                                                    
+                    translate="[mousedown[!event.shiftKey], mouseup] > mousemove!",                     
                     return (
                         alt.Chart(df).transform_fold(
                             ['Velocity1000', 'Force', 'RMS100']
@@ -286,7 +225,6 @@ def main():
                             brushed
                         ).resolve_scale(y='independent')
                     ).properties(width=1000).resolve_scale(y='independent')
-                
                 event_dict = altair_component(altair_chart=altair_histogram())
                 r = event_dict.get("Rows_Count")
             #Number input fields to declare time zone for the Table
@@ -316,14 +254,12 @@ def main():
                     user_time_input_max_main_table = st.number_input("Till Time. ")
             #Save the brushed dataframe
             df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index < user_time_input_max_main_table)]
-
             if len(df_brushed):
                 df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
                 #Find the IMPULSE GRF
                 df['cropped1'] = df.loc[user_time_input_min_main_table:user_time_input_max_main_table:1,'Force']
                 df['Impulse_grf1'] = df['cropped1'] * (1/1000)
                 impulse_grf1 = df['Impulse_grf1'].sum()
-
                 #Find the IMPULSE BW
                 impulse_bw_duration1 = (user_time_input_max_main_table - user_time_input_min_main_table) / 1000
                 impulse_bw1 = pm * 9.81 * impulse_bw_duration1
@@ -344,8 +280,6 @@ def main():
                 headers_list_emg=[]
                 rfd_df=pd.DataFrame()
                 emg_df=pd.DataFrame()
-                
-                
                 for i in range(int(user_time_input_min_main_table),int(user_time_input_max_main_table),50):  
                     X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
                     Y = df_brushed.loc[user_time_input_min_main_table:i:1,'Force'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Force'].mean()
@@ -383,9 +317,6 @@ def main():
                         st.write(rfd_df)
                 with col2:
                         st.write(emg_df)
-                
-                
-            
                 #Give Specific Results
                 with st.expander('Show Specific Calculations', expanded=True):
                     col1, col2, col3, col4, col5 = st.columns(5)
@@ -395,7 +326,6 @@ def main():
                             st.write('Net Impulse:', round(impulse_grf1 - impulse_bw1,2))
                             #st.write('velocity_momentum:', round(velocity_momentum1,2))
                             st.write('Jump (Impluse):', round(jump_depending_impluse,4))
-                            
                     with col2:
                             st.write('Force-Mean:', round(df_brushed["Force"].mean(),2))
                             st.write('Force-Min:', round(min(df_brushed['Force']),2))
@@ -492,6 +422,7 @@ def main():
             
             
             specific_metrics_df = pd.DataFrame(specific_metrics)
+            #Combine all dataframes to one , for the final export
             final_results_df = pd.concat([specific_metrics_df, rfd_df, emg_df], axis=1, join='inner')
             st.write(final_results_df)
             #st.write(specific_metrics)
@@ -725,16 +656,6 @@ def main():
                     user_time_input_max = st.number_input("Till Time ", value=int(closest_zero_velocity_finish))
                     dfRFD = df[(df.index >= user_time_input_min) & (df.index < user_time_input_max)]
 
-                    if (int(user_time_input_min) < int(user_time_input_max)):
-                        st.write("RFD & EMG Results in Time Range : ", len(dfRFD.index))
-                        for i in range(int(user_time_input_min),int(user_time_input_max),50):
-                            if i != 0:
-                                dfRFD['New_Force_Col'] = dfRFD['Force'].head(i)
-                                dfRFD['New_pre_pro_signalEMG_Col'] = dfRFD['pre_pro_signalEMG'].head(i)
-                                b = max(dfRFD['New_Force_Col']) - min(dfRFD['New_Force_Col'])
-                                c = max(dfRFD['New_pre_pro_signalEMG_Col']) - min(dfRFD['New_pre_pro_signalEMG_Col'])
-                                st.write('RFD', i,'=',  (b/i))
-                                st.write('R-EMG', i,'=',  (c/i))
 
             with st.expander("Graph Velocity-Force-RMS", expanded=True):
                 #alt.data_transformers.enable('json')
