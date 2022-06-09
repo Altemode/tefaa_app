@@ -7,7 +7,7 @@ import biosignalsnotebooks as bsnb
 import csv
 import sympy as sp
 from scipy.integrate import quad
-# Edw
+
 st.set_page_config(
      page_title="Tefaa Metrics",
      page_icon="🧊",
@@ -20,7 +20,6 @@ st.set_page_config(
      }
 
  )
-
 
 #st.title(body, anchor=None)
 #st.title('This is a title')
@@ -45,12 +44,14 @@ def main():
         def get_data():
             if platform_mass > 1:
                 df = pd.read_csv(uploaded_file, sep='\s+', header=None)
+                
                 cols = len(df.axes[1])
                 if cols == 10:
                 #df = pd.read_csv("data.txt", sep=" ", header=None, names=["A", "B"])
                     df.columns = ['Time', 'Col_1', 'Mass_1', 'Mass_2', 'Mass_3', 'Mass_4', 'Col_6', 'Col_7', 'Col_8', 'Col_9']
                 if cols == 11:
                     df.columns = ['Time', 'Col_1', 'Mass_1', 'Mass_2', 'Mass_3', 'Mass_4', 'Col_6', 'Col_7', 'Col_8', 'Col_9','Col_10']
+                
                 C = 406.831
                 #sr = 1000
                 resolution = 16
@@ -76,6 +77,7 @@ def main():
                 #df = df[(df['Mass_Sum'] > 50.0)]
                 #df['Mass_Sum'] = ((df['Mass_1'] + df['Mass_2'] + df['Mass_3'] + df['Mass_4']) ) / 2  - platform_mass
                 df['Force'] = df['Mass_Sum'] * 9.81
+                #df = df[df['Force'] > 500]
                 #Find Acceleration
                 df['Acceleration'] = (df['Force'] / pm) - 9.81
                 #Find Velocity
@@ -153,7 +155,7 @@ def main():
             jump_depending_take_off_velocity = (take_off_velocity ** 2) / (9.81 * 2)
 
             #Find the Jump ot the Try depending of the IMPULSE
-            jump_depending_impluse = (velocity_momentum ** 2) / (9.81 * 2)
+            jump_depending_impluse1 = (velocity_momentum ** 2) / (9.81 * 2)
 
             #Find the Time in Air
             in_air_time = (take_off_time - start_try_time) * 0.001
@@ -184,7 +186,7 @@ def main():
                 st.write('Impulse (BW) is:', round(impulse_bw,4), 'N/s')
                 st.write('Net Impulse is:', round((impulse_grf - impulse_bw),4), 'N/s')
                 st.write('Jump (Take Off Velocity) is:', round(jump_depending_take_off_velocity, 4), 'm')
-                st.write('Jump (Impulse) is:', round(jump_depending_impluse, 4), 'm')
+                st.write('Jump (Impulse) is:', round(jump_depending_impluse1, 4), 'm')
                 #st.write('Jump (In Air Time) is:', round(Jump_depending_in_air_time, 4), 'm')
             #Calculate RFD & R_EMG
             with st.sidebar.expander("RFD & EMG"):
@@ -326,59 +328,64 @@ def main():
                 impulse_bw_duration1 = (user_time_input_max_main_table - user_time_input_min_main_table) / 1000
                 impulse_bw1 = pm * 9.81 * impulse_bw_duration1
                 velocity_momentum1 = (impulse_grf1 - impulse_bw1) / pm
-                jump_depending_impluse1 = (velocity_momentum1 ** 2) / (9.81 * 2)
+                jump_depending_impluse = (velocity_momentum1 ** 2) / (9.81 * 2)
 
-                    #Find the IMPULSE GRF
+                #Find the IMPULSE GRF
                 df['cropped'] = df.loc[(start_try_time-1000):take_off_time:1,'Force']
                 df['Impulse_grf'] = df['cropped'] * (1/1000)
                 impulse_grf = df['Impulse_grf'].sum()
 
-                # #Find the IMPULSE BW
-                # impulse_bw_duration = (take_off_time - (start_try_time-1000)) / 1000
-                # impulse_bw = pm * 9.81 * impulse_bw_duration
+                #Find the RFD linear igression
+                l_rfd=[]
+                l_emg=[]
+                b_rfd=[]
+                b_emg=[]
+                headers_list_rfd=[]
+                headers_list_emg=[]
+                rfd_df=pd.DataFrame()
+                emg_df=pd.DataFrame()
+                
+                
+                for i in range(int(user_time_input_min_main_table),int(user_time_input_max_main_table),50):  
+                    X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
+                    Y = df_brushed.loc[user_time_input_min_main_table:i:1,'Force'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Force'].mean()
+                    b_rfd = (X*Y).sum() / (X ** 2).sum()
+                    headers_list_rfd.append("RFD-"+str(i))
+                    l_rfd.append(b_rfd)
+                    #FOR EMG
+                    X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
+                    Y = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG'].mean()
+                    b_emg = (X*Y).sum() / (X ** 2).sum()
+                    headers_list_emg.append("EMG-"+str(i))
+                    l_emg.append(b_emg)
 
-                # #Find the Velocity depending on impulse
-                # velocity_momentum = (impulse_grf - impulse_bw) / pm
+                if rfd_df.empty:
+                    rfd_df = pd.DataFrame([l_rfd])
+                    cols = len(rfd_df.axes[1])
+                    rfd_df.columns = [*headers_list_rfd]
+                else:
+                    to_append = l_rfd
+                    rfd_df_length = len(rfd_df)
+                    rfd_df.loc[rfd_df_length] = to_append
+
+                #Dataframe for EMG
+                if emg_df.empty:
+                    emg_df = pd.DataFrame([l_emg])
+                    cols = len(emg_df.axes[1])
+                    emg_df.columns = [*headers_list_emg]
+                else:
+                    to_append = emg_df
+                    emg_df_length = len(emg_df)
+                    emg_df.loc[emg_df_length] = to_append
+
+                col1,col2 = st.columns(2)
+                with col1:
+                        st.write(rfd_df)
+                with col2:
+                        st.write(emg_df)
+                
+                
             
-                # #Find the Jump ot the Try depending of the IMPULSE
-                # jump_depending_impluse = (velocity_momentum ** 2) / (9.81 * 2)
-
-                #a= (Σy)(Σx2) - (Σx)(Σxy)/ n(Σx2) - (Σx)2
-                sX= df_brushed['Rows_Count'].sum()
-                #sX= (df_brushed.loc[user_time_input_min_main_table:user_time_input_max_main_table:1,'Rows_Count'].sum())/1000
-
-                #sX2=(df.loc([user_time_input_min_main_table:user_time_input_max_main_table:1,'Time'])**2).sum())/1000
-                df_brushed['Rows_Count2']=df_brushed['Rows_Count']**2
-                sX2= df_brushed['Rows_Count2'].sum()
-                sXY= (df_brushed['Rows_Count'] * df_brushed['Force']).sum()
-               
-
-                #sX= ((user_time_input_max_main_table - user_time_input_min_main_table) / 1000).sum()
-                #sx2= (((user_time_input_max_main_table - user_time_input_min_main_table) / 1000)) * * 2
-                sY= df_brushed['Force'].sum()
-                
-                n = user_time_input_max_main_table - user_time_input_min_main_table
-
-                b = (n*sXY) - (sX*sY) / (n*sX2) - (sX**2)
-                
-                #b= n (Σxy) - (Σx)(Σy) /n(Σx2) - (Σx)2
-
-
-
-                # t = sp.Symbol('t')
-                # sp.integrate(df['Force'],t)
-
-                #df['Force']=df['Force'].apply(lambda x: float(x))
-
-                # def f(t):
-                #     return df.loc[t,'Time']
-                
-                # i, err = quad(f, user_time_input_min_main_table, user_time_input_max_main_table)
-
-                # vel = i / pm
-                # df.groupby(df.Device).apply(lambda g: integrate.trapz(g.Current, x=g.TimeSec))
-
-
                 #Give Specific Results
                 with st.expander('Show Specific Calculations', expanded=True):
                     col1, col2, col3, col4, col5 = st.columns(5)
@@ -387,9 +394,7 @@ def main():
                             st.write('Impulse BW:', round(impulse_bw1,2))
                             st.write('Net Impulse:', round(impulse_grf1 - impulse_bw1,2))
                             #st.write('velocity_momentum:', round(velocity_momentum1,2))
-                            st.write('Jump (Impluse):', round(jump_depending_impluse1,4))
-                            #st.write('sX:', sX, 'sY', sY, 'n', n, 'sX2', sX2, 'sXY', sXY)
-                            #st.write('b',b)
+                            st.write('Jump (Impluse):', round(jump_depending_impluse,4))
                             
                     with col2:
                             st.write('Force-Mean:', round(df_brushed["Force"].mean(),2))
@@ -420,7 +425,7 @@ def main():
                         file_name='df.csv',
                         mime='text/csv',
                     )
-            #The same method for un-brushed Grapth
+            #The same method for un-brushed Graph
             else:
                 slider = alt.binding_range(min=0, max=100, step=1, name='cutoff:')
                 with st.expander("Show Specific Calculations", expanded=True):
@@ -446,28 +451,7 @@ def main():
                             'Min': [min(df['Force']), min(df['Mass_Sum']), min(df['Velocity']), min(df['Acceleration'])],
                             'Max': [max(df['Force']), max(df['Mass_Sum']), max(df['Velocity']), max(df['Acceleration'])],
                             #'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])] }
-}
-                # df_calcs = pd.DataFrame(data)
-                # col1, col2, col3, col4, col5, col6 = st.columns(6)
-                # with col1:
-                #         title = st.text_input(label='Give the filename',value='filename.csv', placeholder="write here your prefer filename .csv")
-                # with col2:
-                #         st.write(' ')
-                # with col3:
-                #         st.write(' ')
-                # with col4:
-                #         st.write(' ')
-                # with col5:
-                #         st.write(' ')
-                # with col6:
-                #         st.write(' ')
-                # #Button to export these Specific Results
-                # st.download_button(
-                #     label="Export metrics",
-                #     data=df_calcs.to_csv(),
-                #     file_name='{title}.csv',
-                #     mime='csv',
-                # )
+                        }               
                 #Display some Values in Sidebar
                 st.sidebar.write('Time range from', min(df['Rows_Count']), 'to', max(df['Rows_Count']), 'ms')
                 st.sidebar.write('Min Mass_Sum:', min(df['Mass_Sum']))
@@ -484,20 +468,13 @@ def main():
                         file_name='df.csv',
                         mime='text/csv',
                     )
-            
-
-            # data = {'Unit': ['Force', 'Mass_Sum', 'Velocity', 'Acceleration'],
-            #         'Mean': [df_brushed["Force"].mean(), df_brushed["Mass_Sum"].mean(), df_brushed["Velocity"].mean(), df_brushed["Acceleration"].mean()],
-            #         'Min': [min(df_brushed['Force']), min(df_brushed['Mass_Sum']), min(df_brushed['Velocity']), min(df_brushed['Acceleration'])],
-            #         'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])],
-            #         #'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])] }
-            #         }
             st.write('Export All Metrics')
-            data = {'Unit': ['results'],
+            specific_metrics = [""]
+            specific_metrics = {'Unit': ['results'],
                     'Fullname' : [fulname],
                     'Body Mass (kg)': [pm],
                     'Platform Mass (kg)': [platform_mass],
-                    'Jump (Velocity Take Off) (m/s)' : [jump_depending_take_off_velocity],
+                    'Jump (Velocity Take Off) (m/s)' : [jump_depending_impluse],
                     'Take Off Time (s)' : [take_off_time],
                     'Landing Time (s)' : [landing_time],
                     'Impulse (GRF) (N/s)' : [impulse_grf],
@@ -511,14 +488,16 @@ def main():
                     'Acceleration Mean (m^2/s)' : [df['Acceleration'].mean()],
                     'Acceleration Max (m^2/s)' : [max(df['Acceleration'])],
                     'Acceleration Min (m^2/s)' : [min(df['Acceleration'])],
-                    
-                    #'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])] }
                     }
-            df_data = pd.DataFrame(data)
-            st.write(df_data)
+            
+            
+            specific_metrics_df = pd.DataFrame(specific_metrics)
+            final_results_df = pd.concat([specific_metrics_df, rfd_df, emg_df], axis=1, join='inner')
+            st.write(final_results_df)
+            #st.write(specific_metrics)
             st.download_button(
                 label="Export Final Results",
-                data=df_data.to_csv(),
+                data=final_results_df.to_csv(),
                 file_name='final_results.csv',
                 mime='text/csv',
                     )
