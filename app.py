@@ -7,6 +7,10 @@ import biosignalsnotebooks as bsnb
 import csv
 import sympy as sp
 from scipy.integrate import quad
+import xlsxwriter
+from io import BytesIO
+
+output = BytesIO()
 
 st.set_page_config(
      page_title="Tefaa Metrics",
@@ -51,6 +55,7 @@ def main():
                     df.columns = ['Time', 'Col_1', 'Mass_1', 'Mass_2', 'Mass_3', 'Mass_4', 'Col_6', 'Col_7', 'Col_8', 'Col_9']
                 if cols == 11:
                     df.columns = ['Time', 'Col_1', 'Mass_1', 'Mass_2', 'Mass_3', 'Mass_4', 'Col_6', 'Col_7', 'Col_8', 'Col_9','Col_10']
+                #
                 
                 C = 406.831
                 #sr = 1000
@@ -214,8 +219,8 @@ def main():
                 @st.cache(allow_output_mutation=True)
                 def altair_histogram():
                     brushed = alt.selection_interval(encodings=["x"], name="brushed")
-                    on="[mousedown[!event.shiftKey], mouseup] > mousemove",
-                    translate="[mousedown[!event.shiftKey], mouseup] > mousemove!",                     
+                    # on="[mousedown[!event.shiftKey], mouseup] > mousemove",
+                    # translate="[mousedown[!event.shiftKey], mouseup] > mousemove!",                     
                     return (
                         alt.Chart(df).transform_fold(
                             ['Velocity1000', 'Force', 'RMS100']
@@ -284,6 +289,7 @@ def main():
                     X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
                     Y = df_brushed.loc[user_time_input_min_main_table:i:1,'Force'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Force'].mean()
                     b_rfd = (X*Y).sum() / (X ** 2).sum()
+                    #st.write(round(b_rfd),4)
                     headers_list_rfd.append("RFD-"+str(i))
                     l_rfd.append(b_rfd)
                     #FOR EMG
@@ -321,27 +327,27 @@ def main():
                 with st.expander('Show Specific Calculations', expanded=True):
                     col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
-                            st.write('Impulse GRF:', round(impulse_grf1,2))
-                            st.write('Impulse BW:', round(impulse_bw1,2))
-                            st.write('Net Impulse:', round(impulse_grf1 - impulse_bw1,2))
+                            st.write('Impulse GRF:', round(impulse_grf1,4))
+                            st.write('Impulse BW:', round(impulse_bw1,4))
+                            st.write('Net Impulse:', round(impulse_grf1 - impulse_bw1,4))
                             #st.write('velocity_momentum:', round(velocity_momentum1,2))
                             st.write('Jump (Impluse):', round(jump_depending_impluse,4))
                     with col2:
-                            st.write('Force-Mean:', round(df_brushed["Force"].mean(),2))
-                            st.write('Force-Min:', round(min(df_brushed['Force']),2))
-                            st.write('Force-Max:', round(max(df_brushed['Force']),2))
+                            st.write('Force-Mean:', round(df_brushed["Force"].mean(),4))
+                            st.write('Force-Min:', round(min(df_brushed['Force']),4))
+                            st.write('Force-Max:', round(max(df_brushed['Force']),4))
                     with col3:
-                            st.write('Mass-Mean:', round(df_brushed["Mass_Sum"].mean(),2))
-                            st.write('Mass-Min:', round(min(df_brushed['Mass_Sum']),2))
-                            st.write('Mass-Max:', round(max(df_brushed['Mass_Sum']),2))
+                            st.write('Mass-Mean:', round(df_brushed["Mass_Sum"].mean(),4))
+                            st.write('Mass-Min:', round(min(df_brushed['Mass_Sum']),4))
+                            st.write('Mass-Max:', round(max(df_brushed['Mass_Sum']),4))
                     with col4:
-                            st.write('Velocity-Mean:', round(df_brushed["Velocity"].mean(),2))
-                            st.write('Velocity-Min:', round(min(df_brushed['Velocity']),2))
-                            st.write('Velocity-Max:', round(max(df_brushed['Velocity']),2))
+                            st.write('Velocity-Mean:', round(df_brushed["Velocity"].mean(),4))
+                            st.write('Velocity-Min:', round(min(df_brushed['Velocity']),4))
+                            st.write('Velocity-Max:', round(max(df_brushed['Velocity']),4))
                     with col5:
-                            st.write('Acceleration-Mean:', round(df_brushed["Acceleration"].mean(),2))
-                            st.write('Acceleration-Min:', round(min(df_brushed['Acceleration']),2))
-                            st.write('Acceleration-Max:', round(max(df_brushed['Acceleration']),2))
+                            st.write('Acceleration-Mean:', round(df_brushed["Acceleration"].mean(),4))
+                            st.write('Acceleration-Min:', round(min(df_brushed['Acceleration']),4))
+                            st.write('Acceleration-Max:', round(max(df_brushed['Acceleration']),4))
                 
                 #Display Dataframe in Datatable
                 with st.expander("Show Data Table", expanded=True):
@@ -400,7 +406,8 @@ def main():
                     )
             st.write('Export All Metrics')
             specific_metrics = [""]
-            specific_metrics = {'Unit': ['results'],
+            specific_metrics = {#'Unit': ['results'],
+            
                     'Fullname' : [fulname],
                     'Body Mass (kg)': [pm],
                     'Platform Mass (kg)': [platform_mass],
@@ -409,21 +416,35 @@ def main():
                     'Landing Time (s)' : [landing_time],
                     'Impulse (GRF) (N/s)' : [impulse_grf],
                     'Impulse (BW) (N/s)' : [impulse_bw],
-                    'Force Mean (N)' : [df['Force'].mean()],
-                    'Force Max (N)' : [max(df['Force'])],
-                    'Force Min (N)' : [min(df['Force'])],
-                    'Velocity Mean (m/s)' : [df['Velocity'].mean()],
-                    'Velocity Max (m/s)' : [max(df['Velocity'])],
-                    'Velocity Min (m/s)' : [min(df['Velocity'])],
-                    'Acceleration Mean (m^2/s)' : [df['Acceleration'].mean()],
-                    'Acceleration Max (m^2/s)' : [max(df['Acceleration'])],
-                    'Acceleration Min (m^2/s)' : [min(df['Acceleration'])],
+                    'Force Mean (N)' : [df_brushed['Force'].mean()],
+                    'Force Max (N)' : [max(df_brushed['Force'])],
+                    'Force Min (N)' : [min(df_brushed['Force'])],
+                    'Velocity Mean (m/s)' : [df_brushed['Velocity'].mean()],
+                    'Velocity Max (m/s)' : [max(df_brushed['Velocity'])],
+                    'Velocity Min (m/s)' : [min(df_brushed['Velocity'])],
+                    'Acceleration Mean (m^2/s)' : [df_brushed['Acceleration'].mean()],
+                    'Acceleration Max (m^2/s)' : [max(df_brushed['Acceleration'])],
+                    'Acceleration Min (m^2/s)' : [min(df_brushed['Acceleration'])],
                     }
             
             
             specific_metrics_df = pd.DataFrame(specific_metrics)
+            #specific_metrics_df = specific_metrics_df.round(decimals = 2)
+
             #Combine all dataframes to one , for the final export
             final_results_df = pd.concat([specific_metrics_df, rfd_df, emg_df], axis=1, join='inner')
+            #final_results_df['Body Mass (kg)'] = final_results_df['Body Mass (kg)'].round(decimals = 2)
+            final_results_df =np.round(final_results_df, decimals = 4)
+            # workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+            # worksheet = workbook.add_worksheet()
+
+            # worksheet.write(final_results_df, final_results_df.columns)
+
+
+            # workbook.close()
+
+            # writer = pd.ExcelWriter('pandas_simple.xlsx', engine='xlsxwriter')
+
             st.write(final_results_df)
             #st.write(specific_metrics)
             st.download_button(
