@@ -7,10 +7,10 @@ import biosignalsnotebooks as bsnb
 import csv
 import sympy as sp
 from scipy.integrate import quad
-import xlsxwriter
-from io import BytesIO
+# import xlsxwriter
+# from io import BytesIO
 
-output = BytesIO()
+# output = BytesIO()
 
 st.set_page_config(
      page_title="Tefaa Metrics",
