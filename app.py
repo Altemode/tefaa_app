@@ -82,16 +82,46 @@ def main():
                 df['Start_Velocity'] = df.Acceleration.rolling(window=2,min_periods=1).mean()*0.001
                 df['Velocity'] = df.Start_Velocity.rolling(window=999999,min_periods=1).sum()
                 df['Velocity1000'] = df['Velocity']*1000
+
+
+                #THIS IS ALL FOR EMG TO RMS 1
                 # [Baseline Removal]
-                pre_pro_signal = df['Col_8'] - df["Col_8"].mean()
+                pre_pro_signal1 = df['Col_8'] - df["Col_8"].mean()
                 # [Signal Filtering]
                 low_cutoff = 10 # Hz
                 high_cutoff = 450 # Hz
-                # Application of the signal to the filter. This is EMG after filtering
-                pre_pro_signal = bsnb.aux_functions._butter_bandpass_filter(pre_pro_signal, low_cutoff, high_cutoff, frequency)
-                df['pre_pro_signalEMG'] = pre_pro_signal **2
+                # Application of the signal to the filter. This is EMG1 after filtering
+                pre_pro_signal1= bsnb.aux_functions._butter_bandpass_filter(pre_pro_signal1, low_cutoff, high_cutoff, frequency)
+                df['pre_pro_signalEMG1'] = pre_pro_signal1**2
                 #This is RMS per 100
-                df['RMS100'] = df.pre_pro_signalEMG.rolling(window=100,min_periods=100).mean()**(1/2)
+                df['RMS100_1'] = df.pre_pro_signalEMG1.rolling(window=100,min_periods=100).mean()**(1/2)
+
+
+
+                #THIS IS ALL FOR EMG TO RMS 2
+                # [Baseline Removal]
+                pre_pro_signal2 = df['Col_9'] - df["Col_9"].mean()
+                # [Signal Filtering]
+                low_cutoff = 10 # Hz
+                high_cutoff = 450 # Hz
+                # Application of the signal to the filter. This is EMG1 after filtering
+                pre_pro_signal2= bsnb.aux_functions._butter_bandpass_filter(pre_pro_signal2, low_cutoff, high_cutoff, frequency)
+                df['pre_pro_signalEMG2'] = pre_pro_signal2**2
+                #This is RMS per 100
+                df['RMS100_2'] = df.pre_pro_signalEMG2.rolling(window=100,min_periods=100).mean()**(1/2)
+
+                #THIS IS ALL FOR EMG TO RMS 3
+                # [Baseline Removal]
+                pre_pro_signal3 = df['Col_10'] - df["Col_10"].mean()
+                # [Signal Filtering]
+                low_cutoff = 10 # Hz
+                high_cutoff = 450 # Hz
+                # Application of the signal to the filter. This is EMG1 after filtering
+                pre_pro_signal3= bsnb.aux_functions._butter_bandpass_filter(pre_pro_signal3, low_cutoff, high_cutoff, frequency)
+                df['pre_pro_signalEMG3'] = pre_pro_signal3**2
+                #This is RMS per 100
+                df['RMS100_3'] = df.pre_pro_signalEMG3.rolling(window=100,min_periods=100).mean()**(1/2)
+
                 #Create new column for index
                 df['Rows_Count'] = df.index
                 return pm, platform_mass, df
@@ -100,7 +130,10 @@ def main():
         if a > 1:
             pm, platform_mass, df = get_data()
             if rms_step >0:
-                df['RMS100'] = df.pre_pro_signalEMG.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+                df['RMS100_1'] = df.pre_pro_signalEMG1.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+                df['RMS100_2'] = df.pre_pro_signalEMG2.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+                df['RMS100_3'] = df.pre_pro_signalEMG3.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+
             #Find Maximum Velocity
             Vmax = max(df['Velocity'])
 
@@ -194,9 +227,9 @@ def main():
             with st.expander("Graph Velocity-Force-RMS", expanded=True):
                 brushed = alt.selection_interval(encodings=['x'], name="brushed")
                 base = alt.Chart(df).mark_line().transform_fold(
-                    ['Velocity1000', 'Force','RMS100'],
+                    ['Velocity1000', 'Force','RMS100_1, RMS100_2, RMS100_3'],
                     as_=['Measure', 'Value']
-                ).encode(alt.Color('Measure:N'),alt.X('Rows_Count:T'),tooltip=['Rows_Count', 'Force', 'Velocity', 'Force', 'Acceleration', 'RMS100'])
+                ).encode(alt.Color('Measure:N'),alt.X('Rows_Count:T'),tooltip=['Rows_Count', 'Force', 'Velocity', 'Force', 'Acceleration', 'RMS100_1, RMS100_2, RMS100_3'])
                 line_A = base.transform_filter(
                     alt.datum.Measure == 'Velocity'
                 ).encode(
@@ -208,9 +241,19 @@ def main():
                     alt.Y('Value:Q',axis=alt.Axis(title='Force')),
                 )
                 line_C = base.transform_filter(
-                    alt.datum.Measure == 'RMS100'
+                    alt.datum.Measure == 'RMS100_1'
                 ).encode(
-                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100'))
+                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_1'))
+                )
+                line_D = base.transform_filter(
+                    alt.datum.Measure == 'RMS100_2'
+                ).encode(
+                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_2'))
+                )
+                line_E = base.transform_filter(
+                    alt.datum.Measure == 'RMS100_3'
+                ).encode(
+                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_3'))
                 )
                 #c=alt.layer(line_A, line_B, line_C).resolve_scale(y='independent').properties(width=950)
                 #Display Chart
@@ -223,10 +266,10 @@ def main():
                     # translate="[mousedown[!event.shiftKey], mouseup] > mousemove!",                     
                     return (
                         alt.Chart(df).transform_fold(
-                            ['Velocity1000', 'Force', 'RMS100']
+                            ['Velocity1000', 'Force', 'RMS100_1', 'RMS100_2', 'RMS100_3']
                         ).resolve_scale(y='independent')
                         .mark_line().resolve_scale(y='independent')
-                        .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100'], color='key:N').add_selection(
+                        .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1', 'RMS100_2', 'RMS100_3'], color='key:N').add_selection(
                             brushed
                         ).resolve_scale(y='independent')
                     ).properties(width=1000).resolve_scale(y='independent')
@@ -277,52 +320,91 @@ def main():
                 impulse_grf = df['Impulse_grf'].sum()
 
                 #Find the RFD linear igression
-                l_rfd=[]
-                l_emg=[]
-                b_rfd=[]
-                b_emg=[]
-                headers_list_rfd=[]
-                headers_list_emg=[]
-                rfd_df=pd.DataFrame()
-                emg_df=pd.DataFrame()
+                l_rfd1=[]
+                l_emg1=[]
+                l_emg2=[]
+                l_emg3=[]
+                b_rfd1=[]
+                b_emg1=[]
+                b_emg2=[]
+                b_emg3=[]
+                headers_list_rfd1=[]
+                headers_list_emg1=[]
+                headers_list_emg2=[]
+                headers_list_emg3=[]
+                rfd_df1=pd.DataFrame()
+                emg_df1=pd.DataFrame()
+                emg_df2=pd.DataFrame()
+                emg_df3=pd.DataFrame()
                 for i in range(int(user_time_input_min_main_table),int(user_time_input_max_main_table),50):  
                     X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
                     Y = df_brushed.loc[user_time_input_min_main_table:i:1,'Force'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Force'].mean()
-                    b_rfd = (X*Y).sum() / (X ** 2).sum()
+                    b_rfd1 = (X*Y).sum() / (X ** 2).sum()
                     #st.write(round(b_rfd),4)
-                    headers_list_rfd.append("RFD-"+str(i))
-                    l_rfd.append(b_rfd)
+                    headers_list_rfd1.append("RFD-"+str(i))
+                    l_rfd1.append(b_rfd1)
                     #FOR EMG
                     X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
-                    Y = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG'].mean()
-                    b_emg = (X*Y).sum() / (X ** 2).sum()
-                    headers_list_emg.append("EMG-"+str(i))
-                    l_emg.append(b_emg)
+                    Y1 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'].mean()
+                    Y2 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'].mean()
+                    Y3 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'].mean()
 
-                if rfd_df.empty:
-                    rfd_df = pd.DataFrame([l_rfd])
-                    cols = len(rfd_df.axes[1])
-                    rfd_df.columns = [*headers_list_rfd]
+                    
+                    b_emg1 = (X*Y1).sum() / (X ** 2).sum()
+                    b_emg2 = (X*Y2).sum() / (X ** 2).sum()
+                    b_emg3 = (X*Y3).sum() / (X ** 2).sum()
+
+                    headers_list_emg1.append("EMG1-"+str(i))
+                    headers_list_emg2.append("EMG2-"+str(i))
+                    headers_list_emg3.append("EMG3-"+str(i))
+                    l_emg1.append(b_emg1)
+                    l_emg2.append(b_emg2)
+                    l_emg3.append(b_emg3)
+
+                if rfd_df1.empty:
+                    rfd_df1 = pd.DataFrame([l_rfd1])
+                    cols = len(rfd_df1.axes[1])
+                    rfd_df1.columns = [*headers_list_rfd1]
                 else:
-                    to_append = l_rfd
-                    rfd_df_length = len(rfd_df)
-                    rfd_df.loc[rfd_df_length] = to_append
+                    to_append = l_rfd1
+                    rfd_df1_length = len(rfd_df1)
+                    rfd_df1.loc[rfd_df1_length] = to_append
 
                 #Dataframe for EMG
-                if emg_df.empty:
-                    emg_df = pd.DataFrame([l_emg])
-                    cols = len(emg_df.axes[1])
-                    emg_df.columns = [*headers_list_emg]
+                if emg_df1.empty:
+                    emg_df1 = pd.DataFrame([l_emg1])
+                    cols = len(emg_df1.axes[1])
+                    emg_df1.columns = [*headers_list_emg1]
                 else:
-                    to_append = emg_df
-                    emg_df_length = len(emg_df)
-                    emg_df.loc[emg_df_length] = to_append
+                    to_append = emg_df1
+                    emg_df1_length = len(emg_df1)
+                    emg_df1.loc[emg_df1_length] = to_append
+                
+                #Dataframe for EMG
+                if emg_df2.empty:
+                    emg_df2 = pd.DataFrame([l_emg2])
+                    cols = len(emg_df2.axes[1])
+                    emg_df2.columns = [*headers_list_emg2]
+                else:
+                    to_append = emg_df2
+                    emg_df2_length = len(emg_df2)
+                    emg_df2.loc[emg_df2_length] = to_append
+
+                #Dataframe for EMG
+                if emg_df3.empty:
+                    emg_df3 = pd.DataFrame([l_emg3])
+                    cols = len(emg_df3.axes[1])
+                    emg_df3.columns = [*headers_list_emg3]
+                else:
+                    to_append = emg_df3
+                    emg_df3_length = len(emg_df3)
+                    emg_df3.loc[emg_df3_length] = to_append
 
                 col1,col2 = st.columns(2)
                 with col1:
-                        st.write(rfd_df)
+                        st.write(rfd_df1)
                 with col2:
-                        st.write(emg_df)
+                        st.write(emg_df1)
                 #Give Specific Results
                 with st.expander('Show Specific Calculations', expanded=True):
                     col1, col2, col3, col4, col5 = st.columns(5)
@@ -337,9 +419,9 @@ def main():
                             st.write('Force-Min:', round(min(df_brushed['Force']),4))
                             st.write('Force-Max:', round(max(df_brushed['Force']),4))
                     with col3:
-                            st.write('Mass-Mean:', round(df_brushed["Mass_Sum"].mean(),4))
-                            st.write('Mass-Min:', round(min(df_brushed['Mass_Sum']),4))
-                            st.write('Mass-Max:', round(max(df_brushed['Mass_Sum']),4))
+                            st.write('RMS100_1-Mean:', round(df_brushed["RMS100_1"].mean(),4))
+                            st.write('RMS100_2-Mean:', round(min(df_brushed['RMS100_2']),4))
+                            st.write('RMS100_3-Mean:', round(max(df_brushed['RMS100_3']),4))
                     with col4:
                             st.write('Velocity-Mean:', round(df_brushed["Velocity"].mean(),4))
                             st.write('Velocity-Min:', round(min(df_brushed['Velocity']),4))
@@ -352,7 +434,7 @@ def main():
                 #Display Dataframe in Datatable
                 with st.expander("Show Data Table", expanded=True):
                     selected_filtered_columns = st.multiselect(
-                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100'), help='Click to select', options=df_brushed.columns)
+                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1', 'RMS100_2', 'RMS100_3'), help='Click to select', options=df_brushed.columns)
                     st.write(df_brushed[selected_filtered_columns])
                     #Button to export results
                     st.download_button(
@@ -365,7 +447,7 @@ def main():
             else:
                 slider = alt.binding_range(min=0, max=100, step=1, name='cutoff:')
                 with st.expander("Show Specific Calculations", expanded=True):
-                    col1, col2, col3, col4 = st.columns(4)
+                    col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
                             st.write('Force-Mean:', df["Force"].mean())
                             st.write('Force-Min:', min(df['Force']))
@@ -379,6 +461,10 @@ def main():
                             st.write('Velocity-Min:', min(df['Velocity']))
                             st.write('Velocity-Max:', max(df['Velocity']))
                     with col4:
+                            st.write('RMS100_1-Mean:', df["RMS100_1"].mean())
+                            st.write('RMS100_2-Mean:', df["RMS100_2"].mean())
+                            st.write('RMS100_3-Mean:', df["RMS100_3"].mean())
+                    with col5:
                             st.write('Acceleration-Mean:', df["Acceleration"].mean())
                             st.write('Acceleration-Min:', min(df['Acceleration']))
                             st.write('Acceleration-Max:', max(df['Acceleration']))
@@ -395,7 +481,7 @@ def main():
                 #Display Dataframe in Datatable
                 with st.expander("Show Data Table", expanded=True):
                     selected_clear_columns = st.multiselect(
-                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100'), help='Click to select', options=df.columns)
+                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1','RMS100_2', 'RMS100_3'), help='Click to select', options=df.columns)
                     st.write(df[selected_clear_columns])
                     #Button to export results
                     st.download_button(
@@ -411,11 +497,14 @@ def main():
                     'Fullname' : [fulname],
                     'Body Mass (kg)': [pm],
                     'Platform Mass (kg)': [platform_mass],
-                    'Jump (Velocity Take Off) (m/s)' : [jump_depending_impluse],
+                    'Jump (Velocity Take Off) (m/s)' : [jump_depending_impluse1],
                     'Take Off Time (s)' : [take_off_time],
                     'Landing Time (s)' : [landing_time],
                     'Impulse (GRF) (N/s)' : [impulse_grf],
                     'Impulse (BW) (N/s)' : [impulse_bw],
+                    'RMS_1 Mean' : [df_brushed['RMS100_1'].mean()],
+                    'RMS_2 Mean' : [df_brushed['RMS100_2'].mean()],
+                    'RMS_3 Mean' : [df_brushed['RMS100_3'].mean()],
                     'Force Mean (N)' : [df_brushed['Force'].mean()],
                     'Force Max (N)' : [max(df_brushed['Force'])],
                     'Force Min (N)' : [min(df_brushed['Force'])],
@@ -432,7 +521,7 @@ def main():
             #specific_metrics_df = specific_metrics_df.round(decimals = 2)
 
             #Combine all dataframes to one , for the final export
-            final_results_df = pd.concat([specific_metrics_df, rfd_df, emg_df], axis=1, join='inner')
+            final_results_df = pd.concat([specific_metrics_df, rfd_df1, emg_df1, emg_df2, emg_df3], axis=1, join='inner')
             #final_results_df['Body Mass (kg)'] = final_results_df['Body Mass (kg)'].round(decimals = 2)
             final_results_df =np.round(final_results_df, decimals = 4)
             # workbook = xlsxwriter.Workbook(output, {'in_memory': True})
@@ -631,16 +720,16 @@ def main():
                 #df['RMS'] = df.EMG.rolling(window=50,min_periods=50).mean()**(1/2)
 
                 # [Baseline Removal]
-                pre_pro_signal = df['Col_8'] - df["Col_8"].mean()
+                pre_pro_signal1= df['Col_8'] - df["Col_8"].mean()
                 # [Signal Filtering]
                 low_cutoff = 10 # Hz
                 high_cutoff = 450 # Hz
                 # Application of the signal to the filter. This is EMG after filtering
-                pre_pro_signal = bsnb.aux_functions._butter_bandpass_filter(pre_pro_signal, low_cutoff, high_cutoff, frequency)
-                df['pre_pro_signalEMG'] = pre_pro_signal **2
+                pre_pro_signal1= bsnb.aux_functions._butter_bandpass_filter(pre_pro_signal, low_cutoff, high_cutoff, frequency)
+                df['pre_pro_signalEMG1'] = pre_pro_signal1**2
                 #This is RMS per 100
-                #df['RMS50'] = df.pre_pro_signalEMG.rolling(window=50,min_periods=50).mean()**(1/2)
-                df['RMS100'] = df.pre_pro_signalEMG.rolling(window=100,min_periods=100).mean()**(1/2)
+                #df['RMS50'] = df.pre_pro_signalEMG1.rolling(window=50,min_periods=50).mean()**(1/2)
+                df['RMS100_1'] = df.pre_pro_signalEMG1.rolling(window=100,min_periods=100).mean()**(1/2)
 
                 df['Rows_Count'] = df.index
 
@@ -649,7 +738,7 @@ def main():
             df = get_data()
             rms_step = st.number_input("Give RMS step ", value=100)
             if rms_step >0:
-                df['RMS100'] = df.pre_pro_signalEMG.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+                df['RMS100_1'] = df.pre_pro_signalEMG1.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
 
             
 
@@ -682,12 +771,12 @@ def main():
                 #alt.data_transformers.enable('json')
                 # @st.cache(allow_output_mutation=True)
                 # def chart():
-                #rms_step = ['RMS50','RMS100']
+                #rms_step = ['RMS50','RMS100_1']
                 brushed = alt.selection_interval(encodings=['x'], name="brushed")
                 base = alt.Chart(df).mark_line().transform_fold(
-                    ['Velocity', 'Force','RMS100'],
+                    ['Velocity', 'Force','RMS100_1'],
                     as_=['Measure', 'Value']
-                ).encode(alt.Color('Measure:N'),alt.X('Rows_Count:T'),tooltip=['Rows_Count', 'Force', 'Velocity', 'Force', 'Acceleration', 'RMS100'])
+                ).encode(alt.Color('Measure:N'),alt.X('Rows_Count:T'),tooltip=['Rows_Count', 'Force', 'Velocity', 'Force', 'Acceleration', 'RMS100_1'])
                 line_A = base.transform_filter(
                     alt.datum.Measure == 'Velocity'
                 ).encode(
@@ -699,9 +788,9 @@ def main():
                     alt.Y('Value:Q',axis=alt.Axis(title='Force')),
                 )
                 line_C = base.transform_filter(
-                    alt.datum.Measure == 'RMS100'
+                    alt.datum.Measure == 'RMS100_1'
                 ).encode(
-                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100'))
+                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_1'))
                 )
                 c=alt.layer(line_A, line_B, line_C).resolve_scale(y='independent').properties(width=950)
 
@@ -751,10 +840,10 @@ def main():
                                                      encodings=['x'], name="brushed")
                     return (
                         alt.Chart(df).transform_fold(
-                            ['Velocity', 'Force','RMS100']
+                            ['Velocity', 'Force','RMS100_1']
                         ).resolve_scale(y='independent')
                         .mark_line().resolve_scale(y='independent')
-                        .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100'], color='key:N').add_selection(
+                        .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1'], color='key:N').add_selection(
                             zoom, brushed
                         ).resolve_scale(y='independent')
 
@@ -884,7 +973,7 @@ def main():
                 with st.expander("Show Data Table", expanded=True):
 
                     selected_filtered_columns = st.multiselect(
-                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100'), help='Click to select', options=df_brushed.columns)
+                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1'), help='Click to select', options=df_brushed.columns)
                     st.write(df_brushed[selected_filtered_columns])
                     #Button to export results
                     st.download_button(
@@ -952,7 +1041,7 @@ def main():
                 #st.write('The Min & Max Velocity values of this time range are:', min(df['Velocity']), max(df['Velocity']))
                 with st.expander("Show Data Table", expanded=True):
                     selected_clear_columns = st.multiselect(
-                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100'), help='Click to select', options=df.columns)
+                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1'), help='Click to select', options=df.columns)
                     st.write(df[selected_clear_columns])
                     #Button to export results
                     st.download_button(
