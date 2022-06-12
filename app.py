@@ -420,8 +420,8 @@ def main():
                             st.write('Force-Max:', round(max(df_brushed['Force']),4))
                     with col3:
                             st.write('RMS100_1-Mean:', round(df_brushed["RMS100_1"].mean(),4))
-                            st.write('RMS100_2-Mean:', round(min(df_brushed['RMS100_2']),4))
-                            st.write('RMS100_3-Mean:', round(max(df_brushed['RMS100_3']),4))
+                            st.write('RMS100_2-Mean:', round(df_brushed['RMS100_2'].mean(),4))
+                            st.write('RMS100_3-Mean:', round(df_brushed['RMS100_3'].mean(),4))
                     with col4:
                             st.write('Velocity-Mean:', round(df_brushed["Velocity"].mean(),4))
                             st.write('Velocity-Min:', round(min(df_brushed['Velocity']),4))
