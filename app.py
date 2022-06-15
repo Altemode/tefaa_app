@@ -42,7 +42,8 @@ def main():
             platform_mass = st.number_input('Give Platform Mass')
             frequency = st.number_input('Give System Frequency', value=1000)
             rms_step = st.number_input("Give RMS step ", value=100, step=50)
-
+            type_of_try = st.selectbox(
+                    'Select type of try', ('vertical_jump','belts'))
         a=platform_mass         
         @st.cache(allow_output_mutation=True)
         def get_data():
@@ -129,10 +130,10 @@ def main():
                 
         if a > 1:
             pm, platform_mass, df = get_data()
-            if rms_step >0:
-                df['RMS100_1'] = df.pre_pro_signalEMG1.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
-                df['RMS100_2'] = df.pre_pro_signalEMG2.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
-                df['RMS100_3'] = df.pre_pro_signalEMG3.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+            # if rms_step >0:
+            #     df['RMS100_1'] = df.pre_pro_signalEMG1.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+            #     df['RMS100_2'] = df.pre_pro_signalEMG2.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
+            #     df['RMS100_3'] = df.pre_pro_signalEMG3.rolling(window=int(rms_step),min_periods=int(rms_step)).mean()**(1/2)
 
             #Find Maximum Velocity
             Vmax = max(df['Velocity'])
@@ -143,405 +144,646 @@ def main():
             specific_std_10 = specific_std * 10
 
             #Find the Time that STARTS the Try.
-            for i in range (5, len(df.index)):
-                if df.loc[i,'Force'] < (k - specific_std_10):
-                    start_try_time = i-30
-                    break
+            if type_of_try == 'vertical_jump':
+                for i in range (5, len(df.index)):
+                    if df.loc[i,'Force'] < (k - specific_std_10):
+                        start_try_time = i-30
+                        break
 
             #Find the proper moment of TAKE OFF Time.
-            closest_to_min_force = df['Force'].sub(df['Force'].min()).abs().idxmin()
-            for i in range (start_try_time, len(df.index)):
-                if df.loc[i,'Force'] < 2:
-                    take_off_time = i
-                    break
-
-            #Find the IMPULSE GRF
-            df['cropped'] = df.loc[(start_try_time-1000):take_off_time:1,'Force']
-            df['Impulse_grf'] = df['cropped'] * (1/1000)
-            impulse_grf = df['Impulse_grf'].sum()
-
-            #Find the IMPULSE BW
-            impulse_bw_duration = (take_off_time - (start_try_time-1000)) / 1000
-            impulse_bw = pm * 9.81 * impulse_bw_duration
-
-            #Find the Velocity depending on impulse
-            velocity_momentum = (impulse_grf - impulse_bw) / pm
             
-            #Find the proper moment of LANDING.
-            std_after_landing = df.loc[closest_to_min_force:(closest_to_min_force+15):1, 'Force'].std()
-            for i in range (take_off_time, len(df.index)):
-                #if df.loc[i,'Force'] < df.loc[(i+1),'Force'] - (std_after_landing * 5):
-                if df.loc[i,'Force'] > 15:
-                    landing_time = i
-                    break
-
-            #Find the time between the TAKE OFF and landing & Take Off Velocity
-            take_off_till_landing_duration = (landing_time - take_off_time) * 0.001
-            take_off_velocity = (9.81 * take_off_till_landing_duration) / 2
-           
-            #Find the Jump ot the Try depending of the TAKE OFF VELOCITY
-            jump_depending_take_off_velocity = (take_off_velocity ** 2) / (9.81 * 2)
-
-            #Find the Jump ot the Try depending of the IMPULSE
-            jump_depending_impluse1 = (velocity_momentum ** 2) / (9.81 * 2)
-
-            #Find the Time in Air
-            in_air_time = (take_off_time - start_try_time) * 0.001
-
-            #Find the Jump of the try depending on Time in Air
-            Jump_depending_in_air_time = (1/2) * 9.81 * ((in_air_time / 2) ** (1/2))
-
-            #Find The Closest to Zero Velocity
-            dfv = df[(df.index >= start_try_time) & (df.index <start_try_time + 500)]            
-            closest_zero_velocity = dfv['Velocity'].sub(0).abs().idxmin()
-
-            #Define The Whole Time Range Of Graph
-            min_time = int(df.index.min())
-            max_time = int(df.index.max())
-            with st.expander("Time Range"):
-                selected_time_range = st.slider('Select the whole time range of the graph, per 100', min_time, max_time, (min_time, max_time), 100)
-            df_selected_model = (df.Rows_Count.between(selected_time_range[0], selected_time_range[1]) )
-            df = pd.DataFrame(df[df_selected_model])
-            #Values Sidebar
-            with st.sidebar.expander(("Values"), expanded=True):
-                st.write('Body mass is:', round(pm,2), 'kg')
-                st.write('Platform mass is:', round(platform_mass,2), 'kg')
-                st.write('Try starts at:', start_try_time, 'ms')
-                st.write('Take Off Time starts at:', take_off_time, 'ms')
-                st.write('Landing Time starts at:', landing_time, 'ms')
-                st.write('Impulse (GRF) is:', round(impulse_grf,4), 'N/s')
-                st.write('Impulse (BW) is:', round(impulse_bw,4), 'N/s')
-                st.write('Net Impulse is:', round((impulse_grf - impulse_bw),4), 'N/s')
-                st.write('Jump (Take Off Velocity) is:', round(jump_depending_take_off_velocity, 4), 'm')
-                st.write('Jump (Impulse) is:', round(jump_depending_impluse1, 4), 'm')
-            #Calculate RFD & R_EMG
-            with st.sidebar.expander("RFD & EMG"):
-                if closest_zero_velocity > 1:
-                    st.write("Closest to Zero Velocity is in:",closest_zero_velocity, "ms")
-                    closest_zero_velocity_start = closest_zero_velocity
-                    closest_zero_velocity_finish = closest_zero_velocity + 500
-                    user_time_input_min = st.number_input("Time From ",  value=int(closest_zero_velocity_start))
-                    user_time_input_max = st.number_input("Till Time ", value=int(closest_zero_velocity_finish))
-                    dfRFD = df[(df.index >= user_time_input_min) & (df.index < user_time_input_max)]     
-            #Create Graph
-            with st.expander("Graph Velocity-Force-RMS", expanded=True):
-                brushed = alt.selection_interval(encodings=['x'], name="brushed")
-                base = alt.Chart(df).mark_line().transform_fold(
-                    ['Velocity1000', 'Force','RMS100_1, RMS100_2, RMS100_3'],
-                    as_=['Measure', 'Value']
-                ).encode(alt.Color('Measure:N'),alt.X('Rows_Count:T'),tooltip=['Rows_Count', 'Force', 'Velocity', 'Force', 'Acceleration', 'RMS100_1, RMS100_2, RMS100_3'])
-                line_A = base.transform_filter(
-                    alt.datum.Measure == 'Velocity'
-                ).encode(
-                    alt.Y('average(Value):Q', axis=alt.Axis(title='Velocity')),
-                )
-                line_B = base.transform_filter(
-                    alt.datum.Measure == 'Force'
-                ).encode(
-                    alt.Y('Value:Q',axis=alt.Axis(title='Force')),
-                )
-                line_C = base.transform_filter(
-                    alt.datum.Measure == 'RMS100_1'
-                ).encode(
-                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_1'))
-                )
-                line_D = base.transform_filter(
-                    alt.datum.Measure == 'RMS100_2'
-                ).encode(
-                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_2'))
-                )
-                line_E = base.transform_filter(
-                    alt.datum.Measure == 'RMS100_3'
-                ).encode(
-                    alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_3'))
-                )
-                #c=alt.layer(line_A, line_B, line_C).resolve_scale(y='independent').properties(width=950)
-                #Display Chart
-                #st.altair_chart(c, use_container_width=True)
+                closest_to_min_force = df['Force'].sub(df['Force'].min()).abs().idxmin()
             
-                @st.cache(allow_output_mutation=True)
-                def altair_histogram():
-                    brushed = alt.selection_interval(encodings=["x"], name="brushed")
-                    # on="[mousedown[!event.shiftKey], mouseup] > mousemove",
-                    # translate="[mousedown[!event.shiftKey], mouseup] > mousemove!",                     
-                    return (
-                        alt.Chart(df).transform_fold(
-                            ['Velocity1000', 'Force', 'RMS100_1', 'RMS100_2', 'RMS100_3']
-                        ).resolve_scale(y='independent')
-                        .mark_line().resolve_scale(y='independent')
-                        .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1', 'RMS100_2', 'RMS100_3'], color='key:N').add_selection(
-                            brushed
-                        ).resolve_scale(y='independent')
-                    ).properties(width=1000).resolve_scale(y='independent')
-                event_dict = altair_component(altair_chart=altair_histogram())
-                r = event_dict.get("Rows_Count")
-            #Number input fields to declare time zone for the Table
-            col1, col2 = st.columns(2)
-            with col1:
-                if r:
-                    if isinstance(r[0], float) is True:
-                        t = int(r[0])
-                        user_time_input_min_main_table = st.number_input("From Time ",value=t)
-                    else:
-                        user_time_input_min_main_table = st.number_input("From Time ",value=r[0])
-                else:
-                    user_time_input_min_main_table = st.number_input("From Time. ")
-
-            with col2:
-                if r:
-                    if isinstance(r[1], float) is True:
-                        t1 = int(r[1])
-                        user_time_input_max_main_table = st.number_input("From Time ",value=t1)
-                        filtered = df[(df.Rows_Count >= r[0]) & (df.Rows_Count < r[1])]
-                        df_brushed = pd.DataFrame(filtered)
-                    else:
-                        user_time_input_max_main_table = st.number_input("From Time ",value=r[1])
-                        filtered = df[(df.Rows_Count >= r[0]) & (df.Rows_Count < r[1])]
-                        df_brushed = pd.DataFrame(filtered)
-                else:
-                    user_time_input_max_main_table = st.number_input("Till Time. ")
-            #Save the brushed dataframe
-            df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index < user_time_input_max_main_table)]
-            if len(df_brushed):
-                df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
-                #Find the IMPULSE GRF
-                df['cropped1'] = df.loc[user_time_input_min_main_table:user_time_input_max_main_table:1,'Force']
-                df['Impulse_grf1'] = df['cropped1'] * (1/1000)
-                impulse_grf1 = df['Impulse_grf1'].sum()
-                #Find the IMPULSE BW
-                impulse_bw_duration1 = (user_time_input_max_main_table - user_time_input_min_main_table) / 1000
-                impulse_bw1 = pm * 9.81 * impulse_bw_duration1
-                velocity_momentum1 = (impulse_grf1 - impulse_bw1) / pm
-                jump_depending_impluse = (velocity_momentum1 ** 2) / (9.81 * 2)
+                for i in range (start_try_time, len(df.index)):
+                    if df.loc[i,'Force'] < 2:
+                        take_off_time = i
+                        break
 
                 #Find the IMPULSE GRF
                 df['cropped'] = df.loc[(start_try_time-1000):take_off_time:1,'Force']
                 df['Impulse_grf'] = df['cropped'] * (1/1000)
                 impulse_grf = df['Impulse_grf'].sum()
 
-                #Find the RFD linear igression
-                l_rfd1=[]
-                l_emg1=[]
-                l_emg2=[]
-                l_emg3=[]
-                b_rfd1=[]
-                b_emg1=[]
-                b_emg2=[]
-                b_emg3=[]
-                headers_list_rfd1=[]
-                headers_list_emg1=[]
-                headers_list_emg2=[]
-                headers_list_emg3=[]
-                rfd_df1=pd.DataFrame()
-                emg_df1=pd.DataFrame()
-                emg_df2=pd.DataFrame()
-                emg_df3=pd.DataFrame()
-                for i in range(int(user_time_input_min_main_table),int(user_time_input_max_main_table),50):  
-                    X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
-                    Y = df_brushed.loc[user_time_input_min_main_table:i:1,'Force'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Force'].mean()
-                    b_rfd1 = (X*Y).sum() / (X ** 2).sum()
-                    #st.write(round(b_rfd),4)
-                    headers_list_rfd1.append("RFD-"+str(i))
-                    l_rfd1.append(b_rfd1)
-                    #FOR EMG
-                    X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
-                    Y1 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'].mean()
-                    Y2 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'].mean()
-                    Y3 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'].mean()
+                #Find the IMPULSE BW
+                impulse_bw_duration = (take_off_time - (start_try_time-1000)) / 1000
+                impulse_bw = pm * 9.81 * impulse_bw_duration
 
-                    
-                    b_emg1 = (X*Y1).sum() / (X ** 2).sum()
-                    b_emg2 = (X*Y2).sum() / (X ** 2).sum()
-                    b_emg3 = (X*Y3).sum() / (X ** 2).sum()
-
-                    headers_list_emg1.append("EMG1-"+str(i))
-                    headers_list_emg2.append("EMG2-"+str(i))
-                    headers_list_emg3.append("EMG3-"+str(i))
-                    l_emg1.append(b_emg1)
-                    l_emg2.append(b_emg2)
-                    l_emg3.append(b_emg3)
-
-                if rfd_df1.empty:
-                    rfd_df1 = pd.DataFrame([l_rfd1])
-                    cols = len(rfd_df1.axes[1])
-                    rfd_df1.columns = [*headers_list_rfd1]
-                else:
-                    to_append = l_rfd1
-                    rfd_df1_length = len(rfd_df1)
-                    rfd_df1.loc[rfd_df1_length] = to_append
-
-                #Dataframe for EMG
-                if emg_df1.empty:
-                    emg_df1 = pd.DataFrame([l_emg1])
-                    cols = len(emg_df1.axes[1])
-                    emg_df1.columns = [*headers_list_emg1]
-                else:
-                    to_append = emg_df1
-                    emg_df1_length = len(emg_df1)
-                    emg_df1.loc[emg_df1_length] = to_append
+                #Find the Velocity depending on impulse
+                velocity_momentum = (impulse_grf - impulse_bw) / pm
                 
-                #Dataframe for EMG
-                if emg_df2.empty:
-                    emg_df2 = pd.DataFrame([l_emg2])
-                    cols = len(emg_df2.axes[1])
-                    emg_df2.columns = [*headers_list_emg2]
-                else:
-                    to_append = emg_df2
-                    emg_df2_length = len(emg_df2)
-                    emg_df2.loc[emg_df2_length] = to_append
+                #Find the proper moment of LANDING.
+                std_after_landing = df.loc[closest_to_min_force:(closest_to_min_force+15):1, 'Force'].std()
+                for i in range (take_off_time, len(df.index)):
+                    #if df.loc[i,'Force'] < df.loc[(i+1),'Force'] - (std_after_landing * 5):
+                    if df.loc[i,'Force'] > 15:
+                        landing_time = i
+                        break
 
-                #Dataframe for EMG
-                if emg_df3.empty:
-                    emg_df3 = pd.DataFrame([l_emg3])
-                    cols = len(emg_df3.axes[1])
-                    emg_df3.columns = [*headers_list_emg3]
-                else:
-                    to_append = emg_df3
-                    emg_df3_length = len(emg_df3)
-                    emg_df3.loc[emg_df3_length] = to_append
+                    #Find the time between the TAKE OFF and landing & Take Off Velocity
+                    take_off_till_landing_duration = (landing_time - take_off_time) * 0.001
+                    take_off_velocity = (9.81 * take_off_till_landing_duration) / 2
+                
+                    #Find the Jump ot the Try depending of the TAKE OFF VELOCITY
+                    jump_depending_take_off_velocity = (take_off_velocity ** 2) / (9.81 * 2)
 
-                col1,col2 = st.columns(2)
+                    #Find the Jump ot the Try depending of the IMPULSE
+                    jump_depending_impluse1 = (velocity_momentum ** 2) / (9.81 * 2)
+
+                    #Find the Time in Air
+                    in_air_time = (take_off_time - start_try_time) * 0.001
+
+                    #Find the Jump of the try depending on Time in Air
+                    Jump_depending_in_air_time = (1/2) * 9.81 * ((in_air_time / 2) ** (1/2))
+
+                    #Find The Closest to Zero Velocity
+                    dfv = df[(df.index >= start_try_time) & (df.index <start_try_time + 500)]            
+                    closest_zero_velocity = dfv['Velocity'].sub(0).abs().idxmin()
+
+                #Define The Whole Time Range Of Graph
+                min_time = int(df.index.min())
+                max_time = int(df.index.max())
+                with st.expander("Time Range"):
+                    selected_time_range = st.slider('Select the whole time range of the graph, per 100', min_time, max_time, (min_time, max_time), 100)
+                df_selected_model = (df.Rows_Count.between(selected_time_range[0], selected_time_range[1]) )
+                df = pd.DataFrame(df[df_selected_model])
+                #Values Sidebar
+                with st.sidebar.expander(("Values"), expanded=True):
+                    st.write('Body mass is:', round(pm,2), 'kg')
+                    st.write('Platform mass is:', round(platform_mass,2), 'kg')
+                    st.write('Try starts at:', start_try_time, 'ms')
+                    st.write('Take Off Time starts at:', take_off_time, 'ms')
+                    st.write('Landing Time starts at:', landing_time, 'ms')
+                    st.write('Impulse (GRF) is:', round(impulse_grf,4), 'N/s')
+                    st.write('Impulse (BW) is:', round(impulse_bw,4), 'N/s')
+                    st.write('Net Impulse is:', round((impulse_grf - impulse_bw),4), 'N/s')
+                    st.write('Jump (Take Off Velocity) is:', round(jump_depending_take_off_velocity, 4), 'm')
+                    st.write('Jump (Impulse) is:', round(jump_depending_impluse1, 4), 'm')
+                #Calculate RFD & R_EMG
+                with st.sidebar.expander("RFD & EMG"):
+                    if closest_zero_velocity > 1:
+                        st.write("Closest to Zero Velocity is in:",closest_zero_velocity, "ms")
+                        closest_zero_velocity_start = closest_zero_velocity
+                        closest_zero_velocity_finish = closest_zero_velocity + 500
+                        user_time_input_min = st.number_input("Time From ",  value=int(closest_zero_velocity_start))
+                        user_time_input_max = st.number_input("Till Time ", value=int(closest_zero_velocity_finish))
+                        dfRFD = df[(df.index >= user_time_input_min) & (df.index < user_time_input_max)]     
+                #Create Graph
+                with st.expander("Graph Velocity-Force-RMS", expanded=True):
+                    brushed = alt.selection_interval(encodings=['x'], name="brushed")
+                    base = alt.Chart(df).mark_line().transform_fold(
+                        ['Velocity1000', 'Force','RMS100_1, RMS100_2, RMS100_3'],
+                        as_=['Measure', 'Value']
+                    ).encode(alt.Color('Measure:N'),alt.X('Rows_Count:T'),tooltip=['Rows_Count', 'Force', 'Velocity', 'Force', 'Acceleration', 'RMS100_1, RMS100_2, RMS100_3'])
+                    line_A = base.transform_filter(
+                        alt.datum.Measure == 'Velocity'
+                    ).encode(
+                        alt.Y('average(Value):Q', axis=alt.Axis(title='Velocity')),
+                    )
+                    line_B = base.transform_filter(
+                        alt.datum.Measure == 'Force'
+                    ).encode(
+                        alt.Y('Value:Q',axis=alt.Axis(title='Force')),
+                    )
+                    line_C = base.transform_filter(
+                        alt.datum.Measure == 'RMS100_1'
+                    ).encode(
+                        alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_1'))
+                    )
+                    line_D = base.transform_filter(
+                        alt.datum.Measure == 'RMS100_2'
+                    ).encode(
+                        alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_2'))
+                    )
+                    line_E = base.transform_filter(
+                        alt.datum.Measure == 'RMS100_3'
+                    ).encode(
+                        alt.Y('Value:Q',axis=alt.Axis(labelPadding= 50, title='RMS100_3'))
+                    )
+                    #c=alt.layer(line_A, line_B, line_C).resolve_scale(y='independent').properties(width=950)
+                    #Display Chart
+                    #st.altair_chart(c, use_container_width=True)
+                
+                    @st.cache(allow_output_mutation=True)
+                    def altair_histogram():
+                        brushed = alt.selection_interval(encodings=["x"], name="brushed")
+                        # on="[mousedown[!event.shiftKey], mouseup] > mousemove",
+                        # translate="[mousedown[!event.shiftKey], mouseup] > mousemove!",                     
+                        return (
+                            alt.Chart(df).transform_fold(
+                                ['Velocity1000', 'Force', 'RMS100_1', 'RMS100_2', 'RMS100_3']
+                            ).resolve_scale(y='independent')
+                            .mark_line().resolve_scale(y='independent')
+                            .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1', 'RMS100_2', 'RMS100_3'], color='key:N').add_selection(
+                                brushed
+                            ).resolve_scale(y='independent')
+                        ).properties(width=1000).resolve_scale(y='independent')
+                    event_dict = altair_component(altair_chart=altair_histogram())
+                    r = event_dict.get("Rows_Count")
+                #Number input fields to declare time zone for the Table
+                col1, col2 = st.columns(2)
                 with col1:
-                        st.write(rfd_df1)
+                    if r:
+                        if isinstance(r[0], float) is True:
+                            t = int(r[0])
+                            user_time_input_min_main_table = st.number_input("From Time ",value=t)
+                        else:
+                            user_time_input_min_main_table = st.number_input("From Time ",value=r[0])
+                    else:
+                        user_time_input_min_main_table = st.number_input("From Time. ")
+
                 with col2:
-                        st.write(emg_df1)
-                #Give Specific Results
-                with st.expander('Show Specific Calculations', expanded=True):
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    with col1:
-                            st.write('Impulse GRF:', round(impulse_grf1,4))
-                            st.write('Impulse BW:', round(impulse_bw1,4))
-                            st.write('Net Impulse:', round(impulse_grf1 - impulse_bw1,4))
-                            #st.write('velocity_momentum:', round(velocity_momentum1,2))
-                            st.write('Jump (Impluse):', round(jump_depending_impluse,4))
-                    with col2:
-                            st.write('Force-Mean:', round(df_brushed["Force"].mean(),4))
-                            st.write('Force-Min:', round(min(df_brushed['Force']),4))
-                            st.write('Force-Max:', round(max(df_brushed['Force']),4))
-                    with col3:
-                            st.write('RMS100_1-Mean:', round(df_brushed["RMS100_1"].mean(),4))
-                            st.write('RMS100_2-Mean:', round(df_brushed['RMS100_2'].mean(),4))
-                            st.write('RMS100_3-Mean:', round(df_brushed['RMS100_3'].mean(),4))
-                    with col4:
-                            st.write('Velocity-Mean:', round(df_brushed["Velocity"].mean(),4))
-                            st.write('Velocity-Min:', round(min(df_brushed['Velocity']),4))
-                            st.write('Velocity-Max:', round(max(df_brushed['Velocity']),4))
-                    with col5:
-                            st.write('Acceleration-Mean:', round(df_brushed["Acceleration"].mean(),4))
-                            st.write('Acceleration-Min:', round(min(df_brushed['Acceleration']),4))
-                            st.write('Acceleration-Max:', round(max(df_brushed['Acceleration']),4))
-                
-                #Display Dataframe in Datatable
-                with st.expander("Show Data Table", expanded=True):
-                    selected_filtered_columns = st.multiselect(
-                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1', 'RMS100_2', 'RMS100_3'), help='Click to select', options=df_brushed.columns)
-                    st.write(df_brushed[selected_filtered_columns])
-                    #Button to export results
+                    if r:
+                        if isinstance(r[1], float) is True:
+                            t1 = int(r[1])
+                            user_time_input_max_main_table = st.number_input("From Time ",value=t1)
+                            filtered = df[(df.Rows_Count >= r[0]) & (df.Rows_Count < r[1])]
+                            df_brushed = pd.DataFrame(filtered)
+                        else:
+                            user_time_input_max_main_table = st.number_input("From Time ",value=r[1])
+                            filtered = df[(df.Rows_Count >= r[0]) & (df.Rows_Count < r[1])]
+                            df_brushed = pd.DataFrame(filtered)
+                    else:
+                        user_time_input_max_main_table = st.number_input("Till Time. ")
+                #Save the brushed dataframe
+                df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index < user_time_input_max_main_table)]
+                if len(df_brushed):
+                    df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
+                    #Find the IMPULSE GRF
+                    df['cropped1'] = df.loc[user_time_input_min_main_table:user_time_input_max_main_table:1,'Force']
+                    df['Impulse_grf1'] = df['cropped1'] * (1/1000)
+                    impulse_grf1 = df['Impulse_grf1'].sum()
+                    #Find the IMPULSE BW
+                    impulse_bw_duration1 = (user_time_input_max_main_table - user_time_input_min_main_table) / 1000
+                    impulse_bw1 = pm * 9.81 * impulse_bw_duration1
+                    velocity_momentum1 = (impulse_grf1 - impulse_bw1) / pm
+                    jump_depending_impluse = (velocity_momentum1 ** 2) / (9.81 * 2)
+
+                    #Find the IMPULSE GRF
+                    df['cropped'] = df.loc[(start_try_time-1000):take_off_time:1,'Force']
+                    df['Impulse_grf'] = df['cropped'] * (1/1000)
+                    impulse_grf = df['Impulse_grf'].sum()
+
+                    #Find the RFD linear igression
+                    l_rfd1=[]
+                    l_emg1=[]
+                    l_emg2=[]
+                    l_emg3=[]
+                    b_rfd1=[]
+                    b_emg1=[]
+                    b_emg2=[]
+                    b_emg3=[]
+                    headers_list_rfd1=[]
+                    headers_list_emg1=[]
+                    headers_list_emg2=[]
+                    headers_list_emg3=[]
+                    rfd_df1=pd.DataFrame()
+                    emg_df1=pd.DataFrame()
+                    emg_df2=pd.DataFrame()
+                    emg_df3=pd.DataFrame()
+                    for i in range(int(user_time_input_min_main_table),int(user_time_input_max_main_table),50):  
+                        X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
+                        Y = df_brushed.loc[user_time_input_min_main_table:i:1,'Force'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Force'].mean()
+                        b_rfd1 = (X*Y).sum() / (X ** 2).sum()
+                        #st.write(round(b_rfd),4)
+                        headers_list_rfd1.append("RFD-"+str(i))
+                        l_rfd1.append(b_rfd1)
+                        #FOR EMG
+                        X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
+                        Y1 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'].mean()
+                        Y2 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'].mean()
+                        Y3 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'].mean()
+
+                        
+                        b_emg1 = (X*Y1).sum() / (X ** 2).sum()
+                        b_emg2 = (X*Y2).sum() / (X ** 2).sum()
+                        b_emg3 = (X*Y3).sum() / (X ** 2).sum()
+
+                        headers_list_emg1.append("EMG1-"+str(i))
+                        headers_list_emg2.append("EMG2-"+str(i))
+                        headers_list_emg3.append("EMG3-"+str(i))
+                        l_emg1.append(b_emg1)
+                        l_emg2.append(b_emg2)
+                        l_emg3.append(b_emg3)
+
+                    if rfd_df1.empty:
+                        rfd_df1 = pd.DataFrame([l_rfd1])
+                        cols = len(rfd_df1.axes[1])
+                        rfd_df1.columns = [*headers_list_rfd1]
+                    else:
+                        to_append = l_rfd1
+                        rfd_df1_length = len(rfd_df1)
+                        rfd_df1.loc[rfd_df1_length] = to_append
+
+                    #Dataframe for EMG
+                    if emg_df1.empty:
+                        emg_df1 = pd.DataFrame([l_emg1])
+                        cols = len(emg_df1.axes[1])
+                        emg_df1.columns = [*headers_list_emg1]
+                    else:
+                        to_append = emg_df1
+                        emg_df1_length = len(emg_df1)
+                        emg_df1.loc[emg_df1_length] = to_append
+                    
+                    #Dataframe for EMG
+                    if emg_df2.empty:
+                        emg_df2 = pd.DataFrame([l_emg2])
+                        cols = len(emg_df2.axes[1])
+                        emg_df2.columns = [*headers_list_emg2]
+                    else:
+                        to_append = emg_df2
+                        emg_df2_length = len(emg_df2)
+                        emg_df2.loc[emg_df2_length] = to_append
+
+                    #Dataframe for EMG
+                    if emg_df3.empty:
+                        emg_df3 = pd.DataFrame([l_emg3])
+                        cols = len(emg_df3.axes[1])
+                        emg_df3.columns = [*headers_list_emg3]
+                    else:
+                        to_append = emg_df3
+                        emg_df3_length = len(emg_df3)
+                        emg_df3.loc[emg_df3_length] = to_append
+                    #Give Specific Results
+                    with st.expander('Show Specific Calculations', expanded=True):
+                        col1, col2, col3, col4, col5 = st.columns(5)
+                        with col1:
+                                st.write('Impulse GRF:', round(impulse_grf1,4))
+                                st.write('Impulse BW:', round(impulse_bw1,4))
+                                st.write('Net Impulse:', round(impulse_grf1 - impulse_bw1,4))
+                                #st.write('velocity_momentum:', round(velocity_momentum1,2))
+                                st.write('Jump (Impluse):', round(jump_depending_impluse,4))
+                        with col2:
+                                st.write('Force-Mean:', round(df_brushed["Force"].mean(),4))
+                                st.write('Force-Min:', round(min(df_brushed['Force']),4))
+                                st.write('Force-Max:', round(max(df_brushed['Force']),4))
+                        with col3:
+                                st.write('RMS100_1-Mean:', round(df_brushed["RMS100_1"].mean(),4))
+                                st.write('RMS100_2-Mean:', round(df_brushed['RMS100_2'].mean(),4))
+                                st.write('RMS100_3-Mean:', round(df_brushed['RMS100_3'].mean(),4))
+                        with col4:
+                                st.write('Velocity-Mean:', round(df_brushed["Velocity"].mean(),4))
+                                st.write('Velocity-Min:', round(min(df_brushed['Velocity']),4))
+                                st.write('Velocity-Max:', round(max(df_brushed['Velocity']),4))
+                        with col5:
+                                st.write('Acceleration-Mean:', round(df_brushed["Acceleration"].mean(),4))
+                                st.write('Acceleration-Min:', round(min(df_brushed['Acceleration']),4))
+                                st.write('Acceleration-Max:', round(max(df_brushed['Acceleration']),4))
+                    
+                    #Display Dataframe in Datatable
+                    with st.expander("Show Data Table", expanded=True):
+                        selected_filtered_columns = st.multiselect(
+                        label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1', 'RMS100_2', 'RMS100_3'), help='Click to select', options=df_brushed.columns)
+                        st.write(df_brushed[selected_filtered_columns])
+                        #Button to export results
+                        st.download_button(
+                            label="Export table",
+                            data=df_brushed[selected_filtered_columns].to_csv(),
+                            file_name='df.csv',
+                            mime='text/csv',
+                        )
+                #The same method for un-brushed Graph
+                    st.write('Export All Metrics')
+                    specific_metrics = [""]
+                    specific_metrics = {#'Unit': ['results'],
+                    
+                            'Fullname' : [fulname],
+                            'Type of try' : [type_of_try],
+                            'Body Mass (kg)': [pm],
+                            'Platform Mass (kg)': [platform_mass],
+                            'Jump (Velocity Take Off) (m/s)' : [jump_depending_impluse1],
+                            'Take Off Time (s)' : [take_off_time],
+                            'Landing Time (s)' : [landing_time],
+                            'Impulse (GRF) (N/s)' : [impulse_grf],
+                            'Impulse (BW) (N/s)' : [impulse_bw],
+                            'RMS_1 Mean' : [df_brushed['RMS100_1'].mean()],
+                            'RMS_2 Mean' : [df_brushed['RMS100_2'].mean()],
+                            'RMS_3 Mean' : [df_brushed['RMS100_3'].mean()],
+                            'Force Mean (N)' : [df_brushed['Force'].mean()],
+                            'Force Max (N)' : [max(df_brushed['Force'])],
+                            'Force Min (N)' : [min(df_brushed['Force'])],
+                            'Velocity Mean (m/s)' : [df_brushed['Velocity'].mean()],
+                            'Velocity Max (m/s)' : [max(df_brushed['Velocity'])],
+                            'Velocity Min (m/s)' : [min(df_brushed['Velocity'])],
+                            'Acceleration Mean (m^2/s)' : [df_brushed['Acceleration'].mean()],
+                            'Acceleration Max (m^2/s)' : [max(df_brushed['Acceleration'])],
+                            'Acceleration Min (m^2/s)' : [min(df_brushed['Acceleration'])],
+                            }
+                    
+                    
+                    specific_metrics_df = pd.DataFrame(specific_metrics)
+                    #specific_metrics_df = specific_metrics_df.round(decimals = 2)
+
+                    #Combine all dataframes to one , for the final export
+                    final_results_df = pd.concat([specific_metrics_df, rfd_df1, emg_df1, emg_df2, emg_df3], axis=1, join='inner')
+                    #final_results_df['Body Mass (kg)'] = final_results_df['Body Mass (kg)'].round(decimals = 2)
+                    final_results_df =np.round(final_results_df, decimals = 4)
+                    # workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+                    # worksheet = workbook.add_worksheet()
+
+                    # worksheet.write(final_results_df, final_results_df.columns)
+
+
+                    # workbook.close()
+
+                    # writer = pd.ExcelWriter('pandas_simple.xlsx', engine='xlsxwriter')
+
+                    st.write(final_results_df)
+                    #st.write(specific_metrics)
                     st.download_button(
-                        label="Export table",
-                        data=df_brushed[selected_filtered_columns].to_csv(),
-                        file_name='df.csv',
+                        label="Export Final Results",
+                        data=final_results_df.to_csv(),
+                        file_name='final_results.csv',
                         mime='text/csv',
-                    )
-            #The same method for un-brushed Graph
-            else:
-                slider = alt.binding_range(min=0, max=100, step=1, name='cutoff:')
-                with st.expander("Show Specific Calculations", expanded=True):
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    with col1:
-                            st.write('Force-Mean:', df["Force"].mean())
-                            st.write('Force-Min:', min(df['Force']))
-                            st.write('Force-Max:', max(df['Force']))
-                    with col2:
-                            st.write('Mass-Mean:', df["Mass_Sum"].mean())
-                            st.write('Mass-Min:', min(df['Mass_Sum']))
-                            st.write('Mass-Max:', max(df['Mass_Sum']))
-                    with col3:
-                            st.write('Velocity-Mean:', df["Velocity"].mean())
-                            st.write('Velocity-Min:', min(df['Velocity']))
-                            st.write('Velocity-Max:', max(df['Velocity']))
-                    with col4:
-                            st.write('RMS100_1-Mean:', df["RMS100_1"].mean())
-                            st.write('RMS100_2-Mean:', df["RMS100_2"].mean())
-                            st.write('RMS100_3-Mean:', df["RMS100_3"].mean())
-                    with col5:
-                            st.write('Acceleration-Mean:', df["Acceleration"].mean())
-                            st.write('Acceleration-Min:', min(df['Acceleration']))
-                            st.write('Acceleration-Max:', max(df['Acceleration']))
-                data = {'Unit': ['Force', 'Mass_Sum', 'Velocity', 'Acceleration'],
-                            'Mean': [df["Force"].mean(), df["Mass_Sum"].mean(), df["Velocity"].mean(), df["Acceleration"].mean()],
-                            'Min': [min(df['Force']), min(df['Mass_Sum']), min(df['Velocity']), min(df['Acceleration'])],
-                            'Max': [max(df['Force']), max(df['Mass_Sum']), max(df['Velocity']), max(df['Acceleration'])],
-                            #'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])] }
-                        }               
-                #Display some Values in Sidebar
-                st.sidebar.write('Time range from', min(df['Rows_Count']), 'to', max(df['Rows_Count']), 'ms')
-                st.sidebar.write('Min Mass_Sum:', min(df['Mass_Sum']))
-                st.sidebar.write('Max Mass_Sum:',  max(df['Mass_Sum']))
-                #Display Dataframe in Datatable
-                with st.expander("Show Data Table", expanded=True):
-                    selected_clear_columns = st.multiselect(
-                    label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1','RMS100_2', 'RMS100_3'), help='Click to select', options=df.columns)
-                    st.write(df[selected_clear_columns])
-                    #Button to export results
+                            )
+                else:
+                    slider = alt.binding_range(min=0, max=100, step=1, name='cutoff:')
+                    with st.expander("Show Specific Calculations", expanded=True):
+                        col1, col2, col3, col4, col5 = st.columns(5)
+                        with col1:
+                                st.write('Force-Mean:', df["Force"].mean())
+                                st.write('Force-Min:', min(df['Force']))
+                                st.write('Force-Max:', max(df['Force']))
+                        with col2:
+                                st.write('Mass-Mean:', df["Mass_Sum"].mean())
+                                st.write('Mass-Min:', min(df['Mass_Sum']))
+                                st.write('Mass-Max:', max(df['Mass_Sum']))
+                        with col3:
+                                st.write('Velocity-Mean:', df["Velocity"].mean())
+                                st.write('Velocity-Min:', min(df['Velocity']))
+                                st.write('Velocity-Max:', max(df['Velocity']))
+                        with col4:
+                                st.write('RMS100_1-Mean:', df["RMS100_1"].mean())
+                                st.write('RMS100_2-Mean:', df["RMS100_2"].mean())
+                                st.write('RMS100_3-Mean:', df["RMS100_3"].mean())
+                        with col5:
+                                st.write('Acceleration-Mean:', df["Acceleration"].mean())
+                                st.write('Acceleration-Min:', min(df['Acceleration']))
+                                st.write('Acceleration-Max:', max(df['Acceleration']))
+                    data = {'Unit': ['Force', 'Mass_Sum', 'Velocity', 'Acceleration'],
+                                'Mean': [df["Force"].mean(), df["Mass_Sum"].mean(), df["Velocity"].mean(), df["Acceleration"].mean()],
+                                'Min': [min(df['Force']), min(df['Mass_Sum']), min(df['Velocity']), min(df['Acceleration'])],
+                                'Max': [max(df['Force']), max(df['Mass_Sum']), max(df['Velocity']), max(df['Acceleration'])],
+                                #'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])] }
+                            }               
+                    #Display some Values in Sidebar
+                    st.sidebar.write('Time range from', min(df['Rows_Count']), 'to', max(df['Rows_Count']), 'ms')
+                    st.sidebar.write('Min Mass_Sum:', min(df['Mass_Sum']))
+                    st.sidebar.write('Max Mass_Sum:',  max(df['Mass_Sum']))
+                    #Display Dataframe in Datatable
+                    with st.expander("Show Data Table", expanded=True):
+                        selected_clear_columns = st.multiselect(
+                        label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1','RMS100_2', 'RMS100_3'), help='Click to select', options=df.columns)
+                        st.write(df[selected_clear_columns])
+                        #Button to export results
+                        st.download_button(
+                            label="Export table",
+                            data=df[selected_clear_columns].to_csv(),
+                            file_name='df.csv',
+                            mime='text/csv',
+                        )
+            ######################################### BELT ##################################################################
+            if type_of_try == 'belts':
+                @st.cache(allow_output_mutation=True)
+                def altair_histogram():
+                    brushed = alt.selection_interval(encodings=["x"], name="brushed")
+                    return (
+                        alt.Chart(df).transform_fold(
+                            ['Force', 'RMS100_1', 'RMS100_2', 'RMS100_3']
+                        ).resolve_scale(y='independent')
+                        .mark_line().resolve_scale(y='independent')
+                        .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'RMS100_1', 'RMS100_2', 'RMS100_3'], color='key:N').add_selection(
+                            brushed
+                        ).resolve_scale(y='independent')
+                    ).properties(width=1000).resolve_scale(y='independent')
+                event_dict = altair_component(altair_chart=altair_histogram())
+                r = event_dict.get("Rows_Count")
+                #Number input fields to declare time zone for the Table
+                col1, col2 = st.columns(2)
+                with col1:
+                    if r:
+                        if isinstance(r[0], float) is True:
+                            t = int(r[0])
+                            user_time_input_min_main_table = st.number_input("From Time ",value=t)
+                        else:
+                            user_time_input_min_main_table = st.number_input("From Time ",value=r[0])
+                    else:
+                        user_time_input_min_main_table = st.number_input("From Time. ")
+
+                with col2:
+                    if r:
+                        if isinstance(r[1], float) is True:
+                            t1 = int(r[1])
+                            user_time_input_max_main_table = st.number_input("From Time ",value=t1)
+                            filtered = df[(df.Rows_Count >= r[0]) & (df.Rows_Count < r[1])]
+                            df_brushed = pd.DataFrame(filtered)
+                        else:
+                            user_time_input_max_main_table = st.number_input("From Time ",value=r[1])
+                            filtered = df[(df.Rows_Count >= r[0]) & (df.Rows_Count < r[1])]
+                            df_brushed = pd.DataFrame(filtered)
+                    else:
+                        user_time_input_max_main_table = st.number_input("Till Time. ")
+                #Save the brushed dataframe
+                df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index < user_time_input_max_main_table)]
+                if len(df_brushed):
+                    df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
+                    #Find the IMPULSE GRF
+                    
+                    
+                    #Find the RFD linear igression
+                    l_rfd1=[]
+                    l_emg1=[]
+                    l_emg2=[]
+                    l_emg3=[]
+                    b_rfd1=[]
+                    b_emg1=[]
+                    b_emg2=[]
+                    b_emg3=[]
+                    headers_list_rfd1=[]
+                    headers_list_emg1=[]
+                    headers_list_emg2=[]
+                    headers_list_emg3=[]
+                    rfd_df1=pd.DataFrame()
+                    emg_df1=pd.DataFrame()
+                    emg_df2=pd.DataFrame()
+                    emg_df3=pd.DataFrame()
+                    for i in range(int(user_time_input_min_main_table),int(user_time_input_max_main_table),50):  
+                        X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
+                        Y = df_brushed.loc[user_time_input_min_main_table:i:1,'Force'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Force'].mean()
+                        b_rfd1 = (X*Y).sum() / (X ** 2).sum()
+                        #st.write(round(b_rfd),4)
+                        headers_list_rfd1.append("RFD-"+str(i))
+                        l_rfd1.append(b_rfd1)
+                        #FOR EMG
+                        X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
+                        Y1 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG1'].mean()
+                        Y2 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG2'].mean()
+                        Y3 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signalEMG3'].mean()
+
+                        
+                        b_emg1 = (X*Y1).sum() / (X ** 2).sum()
+                        b_emg2 = (X*Y2).sum() / (X ** 2).sum()
+                        b_emg3 = (X*Y3).sum() / (X ** 2).sum()
+
+                        headers_list_emg1.append("EMG1-"+str(i))
+                        headers_list_emg2.append("EMG2-"+str(i))
+                        headers_list_emg3.append("EMG3-"+str(i))
+                        l_emg1.append(b_emg1)
+                        l_emg2.append(b_emg2)
+                        l_emg3.append(b_emg3)
+
+                    if rfd_df1.empty:
+                        rfd_df1 = pd.DataFrame([l_rfd1])
+                        cols = len(rfd_df1.axes[1])
+                        rfd_df1.columns = [*headers_list_rfd1]
+                    else:
+                        to_append = l_rfd1
+                        rfd_df1_length = len(rfd_df1)
+                        rfd_df1.loc[rfd_df1_length] = to_append
+
+                    #Dataframe for EMG
+                    if emg_df1.empty:
+                        emg_df1 = pd.DataFrame([l_emg1])
+                        cols = len(emg_df1.axes[1])
+                        emg_df1.columns = [*headers_list_emg1]
+                    else:
+                        to_append = emg_df1
+                        emg_df1_length = len(emg_df1)
+                        emg_df1.loc[emg_df1_length] = to_append
+                    
+                    #Dataframe for EMG
+                    if emg_df2.empty:
+                        emg_df2 = pd.DataFrame([l_emg2])
+                        cols = len(emg_df2.axes[1])
+                        emg_df2.columns = [*headers_list_emg2]
+                    else:
+                        to_append = emg_df2
+                        emg_df2_length = len(emg_df2)
+                        emg_df2.loc[emg_df2_length] = to_append
+
+                    #Dataframe for EMG
+                    if emg_df3.empty:
+                        emg_df3 = pd.DataFrame([l_emg3])
+                        cols = len(emg_df3.axes[1])
+                        emg_df3.columns = [*headers_list_emg3]
+                    else:
+                        to_append = emg_df3
+                        emg_df3_length = len(emg_df3)
+                        emg_df3.loc[emg_df3_length] = to_append
+                    #Give Specific Results
+                    with st.expander('Show Specific Calculations', expanded=True):
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                                st.write('Force-Mean:', round(df_brushed["Force"].mean(),4))
+                                st.write('Force-Min:', round(min(df_brushed['Force']),4))
+                                st.write('Force-Max:', round(max(df_brushed['Force']),4))
+
+                        with col2:
+                                st.write('Mass-Mean:', df["Mass_Sum"].mean())
+                                st.write('Mass-Min:', min(df['Mass_Sum']))
+                                st.write('Mass-Max:', max(df['Mass_Sum']))
+
+                        with col3:
+                                st.write('RMS100_1-Mean:', round(df_brushed["RMS100_1"].mean(),4))
+                                st.write('RMS100_2-Mean:', round(df_brushed['RMS100_2'].mean(),4))
+                                st.write('RMS100_3-Mean:', round(df_brushed['RMS100_3'].mean(),4))
+                        
+                    
+                    #Display Dataframe in Datatable
+                    with st.expander("Show Data Table", expanded=True):
+                        selected_filtered_columns = st.multiselect(
+                        label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum',  'RMS100_1', 'RMS100_2', 'RMS100_3'), help='Click to select', options=df_brushed.columns)
+                        st.write(df_brushed[selected_filtered_columns])
+                        #Button to export results
+                        st.download_button(
+                            label="Export table",
+                            data=df_brushed[selected_filtered_columns].to_csv(),
+                            file_name='df.csv',
+                            mime='text/csv',
+                        )
+                #The same method for un-brushed Graph
+                    st.write('Export All Metrics')
+                    specific_metrics = [""]
+                    specific_metrics = {#'Unit': ['results'],
+                    
+                            'Fullname' : [fulname],
+                            'Type of try' : [type_of_try],
+                            'Body Mass (kg)': [pm],
+                            'Platform Mass (kg)': [platform_mass],
+                            'RMS_1 Mean' : [df_brushed['RMS100_1'].mean()],
+                            'RMS_2 Mean' : [df_brushed['RMS100_2'].mean()],
+                            'RMS_3 Mean' : [df_brushed['RMS100_3'].mean()],
+                            'Force Mean (N)' : [df_brushed['Force'].mean()],
+                            'Force Max (N)' : [max(df_brushed['Force'])],
+                            'Force Min (N)' : [min(df_brushed['Force'])],
+                            }
+                    
+                    
+                    specific_metrics_df = pd.DataFrame(specific_metrics)
+                    #specific_metrics_df = specific_metrics_df.round(decimals = 2)
+
+                    #Combine all dataframes to one , for the final export
+                    final_results_df = pd.concat([specific_metrics_df, rfd_df1, emg_df1, emg_df2, emg_df3], axis=1, join='inner')
+                    #final_results_df['Body Mass (kg)'] = final_results_df['Body Mass (kg)'].round(decimals = 2)
+                    final_results_df =np.round(final_results_df, decimals = 4)
+                    # workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+                    # worksheet = workbook.add_worksheet()
+
+                    # worksheet.write(final_results_df, final_results_df.columns)
+
+
+                    # workbook.close()
+
+                    # writer = pd.ExcelWriter('pandas_simple.xlsx', engine='xlsxwriter')
+
+                    st.write(final_results_df)
+                    #st.write(specific_metrics)
                     st.download_button(
-                        label="Export table",
-                        data=df[selected_clear_columns].to_csv(),
-                        file_name='df.csv',
+                        label="Export Final Results",
+                        data=final_results_df.to_csv(),
+                        file_name='final_results.csv',
                         mime='text/csv',
-                    )
-            st.write('Export All Metrics')
-            specific_metrics = [""]
-            specific_metrics = {#'Unit': ['results'],
+                            )
+                else:
+                    slider = alt.binding_range(min=0, max=100, step=1, name='cutoff:')
+                    with st.expander("Show Specific Calculations", expanded=True):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                                st.write('Force-Mean:', df["Force"].mean())
+                                st.write('Force-Min:', min(df['Force']))
+                                st.write('Force-Max:', max(df['Force']))
+                        with col2:
+                                st.write('Mass-Mean:', df["Mass_Sum"].mean())
+                                st.write('Mass-Min:', min(df['Mass_Sum']))
+                                st.write('Mass-Max:', max(df['Mass_Sum']))
+                        with col3:
+                                st.write('RMS100_1-Mean:', df["RMS100_1"].mean())
+                                st.write('RMS100_2-Mean:', df["RMS100_2"].mean())
+                                st.write('RMS100_3-Mean:', df["RMS100_3"].mean())
+                        
+                    data = {'Unit': ['Force', 'Mass_Sum', 'Velocity', 'Acceleration'],
+                                'Mean': [df["Force"].mean(), df["Mass_Sum"].mean(), df["Velocity"].mean(), df["Acceleration"].mean()],
+                                'Min': [min(df['Force']), min(df['Mass_Sum']), min(df['Velocity']), min(df['Acceleration'])],
+                                'Max': [max(df['Force']), max(df['Mass_Sum']), max(df['Velocity']), max(df['Acceleration'])],
+                                #'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])] }
+                            }               
+                    #Display some Values in Sidebar
+                    st.sidebar.write('Time range from', min(df['Rows_Count']), 'to', max(df['Rows_Count']), 'ms')
+                    st.sidebar.write('Force-Min:', round(min(df['Force']),4))
+                    st.sidebar.write('Force-Max:', round(max(df['Force']),4))
+                    #Display Dataframe in Datatable
+                    with st.expander("Show Data Table", expanded=True):
+                        selected_clear_columns = st.multiselect(
+                        label='What column do you want to display', default=('Time', 'Force', 'Mass_Sum', 'Velocity', 'Acceleration', 'RMS100_1','RMS100_2', 'RMS100_3'), help='Click to select', options=df.columns)
+                        st.write(df[selected_clear_columns])
+                        #Button to export results
+                        st.download_button(
+                            label="Export table",
+                            data=df[selected_clear_columns].to_csv(),
+                            file_name='df.csv',
+                            mime='text/csv',
+                        )
             
-                    'Fullname' : [fulname],
-                    'Body Mass (kg)': [pm],
-                    'Platform Mass (kg)': [platform_mass],
-                    'Jump (Velocity Take Off) (m/s)' : [jump_depending_impluse1],
-                    'Take Off Time (s)' : [take_off_time],
-                    'Landing Time (s)' : [landing_time],
-                    'Impulse (GRF) (N/s)' : [impulse_grf],
-                    'Impulse (BW) (N/s)' : [impulse_bw],
-                    'RMS_1 Mean' : [df_brushed['RMS100_1'].mean()],
-                    'RMS_2 Mean' : [df_brushed['RMS100_2'].mean()],
-                    'RMS_3 Mean' : [df_brushed['RMS100_3'].mean()],
-                    'Force Mean (N)' : [df_brushed['Force'].mean()],
-                    'Force Max (N)' : [max(df_brushed['Force'])],
-                    'Force Min (N)' : [min(df_brushed['Force'])],
-                    'Velocity Mean (m/s)' : [df_brushed['Velocity'].mean()],
-                    'Velocity Max (m/s)' : [max(df_brushed['Velocity'])],
-                    'Velocity Min (m/s)' : [min(df_brushed['Velocity'])],
-                    'Acceleration Mean (m^2/s)' : [df_brushed['Acceleration'].mean()],
-                    'Acceleration Max (m^2/s)' : [max(df_brushed['Acceleration'])],
-                    'Acceleration Min (m^2/s)' : [min(df_brushed['Acceleration'])],
-                    }
-            
-            
-            specific_metrics_df = pd.DataFrame(specific_metrics)
-            #specific_metrics_df = specific_metrics_df.round(decimals = 2)
-
-            #Combine all dataframes to one , for the final export
-            final_results_df = pd.concat([specific_metrics_df, rfd_df1, emg_df1, emg_df2, emg_df3], axis=1, join='inner')
-            #final_results_df['Body Mass (kg)'] = final_results_df['Body Mass (kg)'].round(decimals = 2)
-            final_results_df =np.round(final_results_df, decimals = 4)
-            # workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-            # worksheet = workbook.add_worksheet()
-
-            # worksheet.write(final_results_df, final_results_df.columns)
-
-
-            # workbook.close()
-
-            # writer = pd.ExcelWriter('pandas_simple.xlsx', engine='xlsxwriter')
-
-            st.write(final_results_df)
-            #st.write(specific_metrics)
-            st.download_button(
-                label="Export Final Results",
-                data=final_results_df.to_csv(),
-                file_name='final_results.csv',
-                mime='text/csv',
-                    )
             
 
 ##############################################################################################################################################
