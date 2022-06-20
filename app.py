@@ -39,7 +39,7 @@ def main():
             #st.subheader('Sensor Results')
             fulname = st.text_input('Give The Fullname of the Person')
             type_of_try = st.selectbox(
-                    'Select type of try', ('Vertical Jump','Belts'))
+                    'Select type of try', ('Vertical Jump','Iso'))
             platform_mass = st.number_input('Give Platform Mass')
             frequency = st.number_input('Give System Frequency', value=1000)
             rms_step = st.selectbox(
@@ -490,7 +490,7 @@ def main():
                             mime='text/csv',
                         )
             ######################################### BELT ##################################################################
-            if type_of_try == 'Belts':
+            if type_of_try == 'Iso':
                 min_time = int(df.index.min())
                 max_time = int(df.index.max())
                 with st.expander("Time Range"):
@@ -1258,7 +1258,7 @@ def main():
             #st.subheader('Sensor Results')
             fulname = st.text_input('Give The Fullname of the Person')
             type_of_try = st.selectbox(
-                    'Select type of try', ('Vertical Jump','Belts'))
+                    'Select type of try', ('Vertical Jump','Iso'))
             platform_mass = st.number_input('Give Platform Mass')
             frequency = st.number_input('Give System Frequency', value=1000)
             rms_step = st.selectbox(
@@ -1528,7 +1528,7 @@ def main():
                             mime='text/csv',
                         )
             ######################################### BELT ##################################################################
-            if type_of_try == 'Belts':
+            if type_of_try == 'Iso':
                 min_time = int(df.index.min())
                 max_time = int(df.index.max())
                 with st.expander("Time Range"):
