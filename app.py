@@ -50,7 +50,8 @@ def main():
         def get_data():
             if platform_mass > 1:
                 df = pd.read_csv(uploaded_file, sep='\s+', header=None)
-                
+                #data = df_raw_data[df['Force']>400]
+
                 cols = len(df.axes[1])
                 if cols == 9:
                 #df = pd.read_csv("data.txt", sep=" ", header=None, names=["A", "B"])
@@ -62,7 +63,8 @@ def main():
                 if cols == 11:
                     df.columns = ['Time', 'Col_1', 'Mass_1', 'Mass_2', 'Mass_3', 'Mass_4', 'Col_6', 'Col_7', 'Col_8', 'Col_9','Col_10']
                 #
-                
+
+
                 C = 406.831
                 #sr = 1000
                 resolution = 16
@@ -82,6 +84,10 @@ def main():
                 df['Mass_Sum'] = (df['Mass_1'] + df['Mass_2'] + df['Mass_3'] + df['Mass_4']) - platform_mass
                 pm = df['Mass_Sum'].mean()
                 df['Force'] = df['Mass_Sum'] * 9.81
+
+                #df = pd.DataFrame(df[df_raw_data['Force']>400])
+
+
                 #Find Acceleration
                 df['Acceleration'] = (df['Force'] / pm) - 9.81
                 #Find Velocity
@@ -484,7 +490,7 @@ def main():
                             mime='text/csv',
                         )
             ######################################### BELT ##################################################################
-            if type_of_try == 'belts':
+            if type_of_try == 'Belts':
                 min_time = int(df.index.min())
                 max_time = int(df.index.max())
                 with st.expander("Time Range"):
@@ -1522,7 +1528,7 @@ def main():
                             mime='text/csv',
                         )
             ######################################### BELT ##################################################################
-            if type_of_try == 'belts':
+            if type_of_try == 'Belts':
                 min_time = int(df.index.min())
                 max_time = int(df.index.max())
                 with st.expander("Time Range"):
