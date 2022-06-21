@@ -489,7 +489,7 @@ def main():
                             file_name='df.csv',
                             mime='text/csv',
                         )
-            ######################################### BELT ##################################################################
+            # ######################################### BELT ##################################################################
             if type_of_try == 'Iso':
                 min_time = int(df.index.min())
                 max_time = int(df.index.max())
@@ -507,8 +507,8 @@ def main():
                         .mark_line().resolve_scale(y='independent')
                         .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum', 'RMS100_1', 'RMS100_2', 'RMS100_3'], color='key:N').add_selection(
                             brushed
-                        ).resolve_scale(y='independent')
-                    ).properties(width=1000).resolve_scale(y='independent')
+                        )
+                    ).properties(width=900, height=400)
                 event_dict = altair_component(altair_chart=altair_histogram())
                 r = event_dict.get("Rows_Count")
                 #Number input fields to declare time zone for the Table
@@ -1545,8 +1545,9 @@ def main():
                         .mark_line().resolve_scale(y='independent')
                         .encode(alt.X("Rows_Count:Q"), y="value:Q", tooltip=['Rows_Count', 'Force', 'Mass_Sum'], color='key:N').add_selection(
                             brushed
-                        ).resolve_scale(y='independent')
-                    ).properties(width=1000).resolve_scale(y='independent')
+                        )
+                    )
+                    
                 event_dict = altair_component(altair_chart=altair_histogram())
                 r = event_dict.get("Rows_Count")
                 #Number input fields to declare time zone for the Table
