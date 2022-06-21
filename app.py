@@ -7,6 +7,8 @@ import biosignalsnotebooks as bsnb
 import csv
 import sympy as sp
 from scipy.integrate import quad
+
+
 # import xlsxwriter
 # from io import BytesIO
 
@@ -585,7 +587,7 @@ def main():
 
                         headers_list_emg1.append("EMG1-"+str(i))
                         headers_list_emg2.append("EMG2-"+str(i))
-                        #headers_list_emg3.append("EMG3-"+str(i))
+                        headers_list_emg3.append("EMG3-"+str(i))
                         l_emg1.append(b_emg1)
                         l_emg2.append(b_emg2)
                         l_emg3.append(b_emg3)
@@ -599,7 +601,7 @@ def main():
                         rfd_df1_length = len(rfd_df1)
                         rfd_df1.loc[rfd_df1_length] = to_append
 
-                    #Dataframe for EMG
+                    #Dataframe for EMG1
                     if emg_df1.empty:
                         emg_df1 = pd.DataFrame([l_emg1])
                         cols = len(emg_df1.axes[1])
@@ -609,7 +611,7 @@ def main():
                         emg_df1_length = len(emg_df1)
                         emg_df1.loc[emg_df1_length] = to_append
                     
-                    #Dataframe for EMG
+                    #Dataframe for EMG2
                     if emg_df2.empty:
                         emg_df2 = pd.DataFrame([l_emg2])
                         cols = len(emg_df2.axes[1])
@@ -619,7 +621,7 @@ def main():
                         emg_df2_length = len(emg_df2)
                         emg_df2.loc[emg_df2_length] = to_append
 
-                    #Dataframe for EMG
+                    #Dataframe for EMG3
                     if emg_df3.empty:
                         emg_df3 = pd.DataFrame([l_emg3])
                         cols = len(emg_df3.axes[1])
