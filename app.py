@@ -339,7 +339,7 @@ def main():
                     if df.loc[i,'Force'] < (df['Force'].mean() - 60):
                         start_try_time = i
                         break
-                st.write(start_try_time)
+                
           
 
                 #Define The Whole Time Range Of Graph
@@ -356,7 +356,7 @@ def main():
                 with st.expander(("Graph"), expanded=True):
                     #### CREATE THE MAIN CHART #####
                     fig = go.Figure()
-                    lines_to_hide = ['Velocity',"RMS_1","RMS_2","RMS_3"]
+                    lines_to_hide = ["RMS_1","RMS_2","RMS_3"]
                     # add x and y values for the 1st scatter
                     # plot and name the yaxis as yaxis1 values
                     fig.add_trace(go.Scatter(
@@ -416,18 +416,19 @@ def main():
                             t=100,
                             pad=4
                         ),
+                        hovermode='x',
                         plot_bgcolor="#f9f9f9",
                         paper_bgcolor='#f9f9f9',
                         xaxis=dict(
                             domain=[0.125, 0.92],
                             linecolor="#BCCCDC",
                             showspikes=True, # Show spike line for X-axis
-                            # Format spike
+                            #Format spike
                             spikethickness=2,
                             spikedash="dot",
                             spikecolor="#999999",
                             spikemode="toaxis",
-                            #showspikes= True,
+                            
                             #spikemode= 'toaxis' #// or 'across' or 'marker'      
                         ),
                         # pass the y-axis title, titlefont, color
@@ -442,7 +443,11 @@ def main():
                                 color="#0000ff"
                             ),
                             linecolor="#BCCCDC",
-                            showspikes=True
+                            showspikes=True,
+                            spikethickness=2,
+                            spikedash="dot",
+                            spikecolor="#999999",
+                            spikemode="toaxis",
                         ),
                         # pass the y-axis 2 title, titlefont, color and
                         # tickfont as a dictionary and store it an
@@ -533,9 +538,58 @@ def main():
                         #     ])
                         # )
                     )
-                
+                    # This is to hide by default some line
                     fig.for_each_trace(lambda trace: trace.update(visible="legendonly") 
                                     if trace.name in lines_to_hide else ())
+
+                    def customAnnotations(df, anno_start_try_time, anno_take_off_time, yVal):
+                    # xStart = '2020-08-04'
+                    # xEnd = '2020-08-06'
+                    # xVal='date'
+                    # yVal='regression_sales'
+                    
+                        #fig = go.Figure(data=go.Scatter(x=df['Rows_Count'], y=df[yVal].values, marker_color='black'))
+                        #per_start = df[df.index==xStart]
+                        #per_end = df[df.index==xEnd]
+
+                        fig.add_annotation(dict(font=dict(color='rgba(0,0,200,0.8)',size=12),
+                                                            x=kk,
+                                                            #x = xStart
+                                                            y=df.loc[kk,'Force'],
+                                                            showarrow=True,
+                                                            text="Velocity to Zero",
+                                                            textangle=0,
+                                                            xanchor='right',
+                                                            xref="x",
+                                                            yref="y"))
+
+                        fig.add_annotation(dict(font=dict(color='rgba(0,0,200,0.8)',size=12),
+                                                            x=ll,
+                                                            
+                                                            #x = xStart
+                                                            y=df.loc[ll,'Force'],
+                                                            showarrow=True,
+                                                            text="Force to Average",
+                                                            textangle=0,
+                                                            xanchor='right',
+                                                            xref="x",
+                                                            yref="y"))
+
+                        # fig.add_annotation(dict(font=dict(color='rgba(0,0,200,0.8)',size=12),
+                        #                                     x=per_end.index[0],
+                        #                                     #x = xStart
+                        #                                     y=per_end[yVal].iloc[0],
+                        #                                     showarrow=False,
+                        #                                     text='Period end = ' + per_end.index[0] + '  ',
+                        #                                     #ax = -10,
+                        #                                     textangle=0,
+                        #                                     xanchor='right',
+                        #                                     xref="x",
+                        #                                     yref="y"))
+                        
+                        fig.show()
+                        
+                    customAnnotations(df=df, anno_start_try_time = start_try_time, anno_take_off_time = take_off_time,  yVal='Velocity')
                     st.plotly_chart(fig,use_container_width=True)
                 # Calculate the Jump
                 with st.expander("Calculation of the Jump", expanded=False):
