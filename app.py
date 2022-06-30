@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from supabase import create_client, Client
 
-from st_aggrid import AgGrid
+#from st_aggrid import AgGrid
 import altair as alt
 import biosignalsnotebooks as bsnb
 
