@@ -1,31 +1,19 @@
 import os
-import plotly.graph_objs as go
-import plotly.offline as py
-import js2py
-
-from st_aggrid import AgGrid
 import streamlit as st
 import pandas as pd
 import numpy as np
 from supabase import create_client, Client
-from streamlit_vega_lite import altair_component
+
+from st_aggrid import AgGrid
 import altair as alt
 import biosignalsnotebooks as bsnb
-import csv
-import sympy as sp
 
-import plotly.express as px
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
-import plotly.offline as pyoff
-#import plotly.graph_objs as go
-#import plotly.tools
-from plotly.graph_objs import *
+#import plotly.figure_factory as ff
+#import plotly.offline as pyoff
+#import plotly.offline as py
 
-import plotly.offline as py
-
-from ipywidgets import interactive, HBox, VBox
-from plotly import graph_objects
+#from plotly import graph_objects
 
 
 
@@ -96,29 +84,30 @@ def main():
                 df_raw_data['Mass_Sum'] = (df_raw_data['Mass_1'] + df_raw_data['Mass_2'] + df_raw_data['Mass_3'] + df_raw_data['Mass_4']) - platform_mass
                 df_raw_data['Rows_Count'] = df_raw_data.index
                 return df_raw_data
-        df_raw_data= get_data()
-        if st.button('Reload Dataframe with Raw Data'):
-            get_data()
-        if df_raw_data is not None:
-            min_time = int(df_raw_data.index.min())
-            max_time = int(df_raw_data.index.max())
-            selected_time_range = st.slider('Select the whole time range of the graph, per 100', min_time, max_time, (min_time, max_time), 1)
-            df_selected_model = (df_raw_data.Rows_Count.between(selected_time_range[0], selected_time_range[1]) )
-            df_prepared = pd.DataFrame(df_raw_data[df_selected_model])
-            st.line_chart(df_prepared['Mass_Sum'])
-            df_prepared.drop(['Rows_Count'], axis = 1, inplace=True)
-            filename = uploaded_file.name
-            final_filename = os.path.splitext(filename)[0]
-            st.write("The file name of your file is : ", final_filename)
-            show_df_prepared = st.checkbox("Display the final dataframe")
-            if show_df_prepared:
-                st.dataframe(df_prepared)
-            st.download_button(
-                label="Export File",
-                data=df_prepared.to_csv(),
-                file_name=final_filename +'.csv',
-                mime='text/csv',
-            )
+        if uploaded_file:
+            df_raw_data= get_data()
+            if st.button('Reload Dataframe with Raw Data'):
+                get_data()
+            if df_raw_data is not None:
+                min_time = int(df_raw_data.index.min())
+                max_time = int(df_raw_data.index.max())
+                selected_time_range = st.slider('Select the whole time range of the graph, per 100', min_time, max_time, (min_time, max_time), 1)
+                df_selected_model = (df_raw_data.Rows_Count.between(selected_time_range[0], selected_time_range[1]) )
+                df_prepared = pd.DataFrame(df_raw_data[df_selected_model])
+                st.line_chart(df_prepared['Mass_Sum'])
+                df_prepared.drop(['Rows_Count'], axis = 1, inplace=True)
+                filename = uploaded_file.name
+                final_filename = os.path.splitext(filename)[0]
+                st.write("The file name of your file is : ", final_filename)
+                show_df_prepared = st.checkbox("Display the final dataframe")
+                if show_df_prepared:
+                    st.dataframe(df_prepared)
+                st.download_button(
+                    label="Export File",
+                    data=df_prepared.to_csv(),
+                    file_name=final_filename +'.csv',
+                    mime='text/csv',
+                )
 
 
 
@@ -223,11 +212,11 @@ def main():
                 st.dataframe(df_all_from_main_table)
                 #AgGrid(df_all_from_main_table)
 
-            #url_id = st.number_input("Paste the ID of your link",value=0,step=1)
-            with st.form("Paste the ID of your link"):   
-                    url_id = st.number_input("Paste the ID of your link",value=0,step=1)
-                    submitted = st.form_submit_button("Display Results")
-            if submitted:
+            url_id = st.number_input("Paste the ID of your link",value=0,step=1)
+            # with st.form("Paste the ID of your link"):   
+            #         url_id = st.number_input("Paste the ID of your link",value=0,step=1)
+            #         id_submitted = st.form_submit_button("Display Results")
+            if url_id:
                 def select_filepath_from_specific_id():
                     query=con.table("main_table").select("*").eq("id", url_id).execute()
                     return query
@@ -372,210 +361,187 @@ def main():
                 kk = df.loc[start_try_time:take_off_time,'Velocity'].sub(0).abs().idxmin()
                 ll = (df.loc[kk:take_off_time,'Force']-df['Force'].mean()).sub(0).abs().idxmin()
 
-                #### CREATE THE MAIN CHART #####
-                fig = go.Figure()
-                # add x and y values for the 1st scatter
-                # plot and name the yaxis as yaxis1 values
-                fig.add_trace(go.Scatter(
-                    x=df['Rows_Count'],
-                    y=df['Force'],
-                    name="Force",
-                    line=dict(color="#290baf")
+                with st.expander(("Graph"), expanded=True):
+                    #### CREATE THE MAIN CHART #####
+                    fig = go.Figure()
+                    # add x and y values for the 1st scatter
+                    # plot and name the yaxis as yaxis1 values
+                    fig.add_trace(go.Scatter(
+                        x=df['Rows_Count'],
+                        y=df['Force'],
+                        name="Force",
+                        line=dict(color="#290baf")
+                        
+                    ))
+                    # add x and y values for the 2nd scatter
+                    # plot and name the yaxis as yaxis2 values
+                    fig.add_trace(go.Scatter(
+                        x=df['Rows_Count'],
+                        y=df['Velocity'],
+                        name="Velocity",
+                        yaxis="y2",
+                        line=dict(color="#aa0022")
+                    ))
                     
-                ))
-                # add x and y values for the 2nd scatter
-                # plot and name the yaxis as yaxis2 values
-                fig.add_trace(go.Scatter(
-                    x=df['Rows_Count'],
-                    y=df['Velocity'],
-                    name="Velocity",
-                    yaxis="y2",
-                    line=dict(color="#aa0022")
-                ))
-                
-                # add x and y values for the 3rd scatter
-                # plot and name the yaxis as yaxis3 values
-                fig.add_trace(go.Scatter(
-                    x=df['Rows_Count'],
-                    y=df['RMS_1'],
-                    name="RMS_1",
-                    yaxis="y3"
-                ))
-                # add x and y values for the 4th scatter plot
-                # and name the yaxis as yaxis4 values
-                fig.add_trace(go.Scatter(
-                    x=df['Rows_Count'],
-                    y=df['RMS_2'],
-                    name="RMS_2",
-                    yaxis="y4",
-                    line=dict(color="#7b2b2a")
-                ))
-                fig.add_trace(go.Scatter(
-                    x=df['Rows_Count'],
-                    y=df['RMS_3'],
-                    name="RMS_3",
-                    yaxis="y5",
-                    
-                ))
-                # Create axis objects
-                fig.update_layout(
-                    # split the x-axis to fraction of plots in
-                    # proportions
-                    autosize=False,
-                    title_text="5 y-axes scatter plot",
-                    width=1420,
-                    height=550,
-                    title_x=0.3,
-                    margin=dict(
-                        l=50,
-                        r=50,
-                        b=100,
-                        t=100,
-                        pad=4
-                    ),
-                    plot_bgcolor="#f9f9f9",
-                    paper_bgcolor='#f9f9f9',
-                    xaxis=dict(
-                        domain=[0.125, 0.92],
-                        linecolor="#BCCCDC",
-                        showspikes=True, # Show spike line for X-axis
-                        # Format spike
-                        spikethickness=2,
-                        spikedash="dot",
-                        spikecolor="#999999",
-                        spikemode="toaxis",
-                        #showspikes= True,
-                        #spikemode= 'toaxis' #// or 'across' or 'marker'      
-                    ),
-                    # pass the y-axis title, titlefont, color
-                    # and tickfont as a dictionary and store
-                    # it an variable yaxis
-                    yaxis=dict(
-                        title="Force",
-                        titlefont=dict(
-                            color="#0000ff"
+                    # add x and y values for the 3rd scatter
+                    # plot and name the yaxis as yaxis3 values
+                    fig.add_trace(go.Scatter(
+                        x=df['Rows_Count'],
+                        y=df['RMS_1'],
+                        name="RMS_1",
+                        yaxis="y3"
+                    ))
+                    # add x and y values for the 4th scatter plot
+                    # and name the yaxis as yaxis4 values
+                    fig.add_trace(go.Scatter(
+                        x=df['Rows_Count'],
+                        y=df['RMS_2'],
+                        name="RMS_2",
+                        yaxis="y4",
+                        line=dict(color="#7b2b2a")
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=df['Rows_Count'],
+                        y=df['RMS_3'],
+                        name="RMS_3",
+                        yaxis="y5",
+                        
+                    ))
+                    # Create axis objects
+                    fig.update_layout(
+                        # split the x-axis to fraction of plots in
+                        # proportions
+                        autosize=False,
+                        title_text="5 y-axes scatter plot",
+                        #width=1420,
+                        height=550,
+                        title_x=0.3,
+                        margin=dict(
+                            l=50,
+                            r=50,
+                            b=100,
+                            t=100,
+                            pad=4
                         ),
-                        tickfont=dict(
-                            color="#0000ff"
+                        plot_bgcolor="#f9f9f9",
+                        paper_bgcolor='#f9f9f9',
+                        xaxis=dict(
+                            domain=[0.125, 0.92],
+                            linecolor="#BCCCDC",
+                            showspikes=True, # Show spike line for X-axis
+                            # Format spike
+                            spikethickness=2,
+                            spikedash="dot",
+                            spikecolor="#999999",
+                            spikemode="toaxis",
+                            #showspikes= True,
+                            #spikemode= 'toaxis' #// or 'across' or 'marker'      
                         ),
-                        linecolor="#BCCCDC",
-                        showspikes=True
-                    ),
-                    # pass the y-axis 2 title, titlefont, color and
-                    # tickfont as a dictionary and store it an
-                    # variable yaxis 2
-                    yaxis2=dict(
-                        title="Velocity",
-                        titlefont=dict(
-                            color="#FF0000"
+                        # pass the y-axis title, titlefont, color
+                        # and tickfont as a dictionary and store
+                        # it an variable yaxis
+                        yaxis=dict(
+                            title="Force",
+                            titlefont=dict(
+                                color="#0000ff"
+                            ),
+                            tickfont=dict(
+                                color="#0000ff"
+                            ),
+                            linecolor="#BCCCDC",
+                            showspikes=True
                         ),
-                        tickfont=dict(
-                            color="#FF0000"
+                        # pass the y-axis 2 title, titlefont, color and
+                        # tickfont as a dictionary and store it an
+                        # variable yaxis 2
+                        yaxis2=dict(
+                            title="Velocity",
+                            titlefont=dict(
+                                color="#FF0000"
+                            ),
+                            tickfont=dict(
+                                color="#FF0000"
+                            ),
+                            anchor="free",  # specifying x - axis has to be the fixed
+                            overlaying="y",  # specifyinfg y - axis has to be separated
+                            side="left",  # specifying the side the axis should be present
+                            position=0.06,  # specifying the position of the axis
+                            showspikes=True
                         ),
-                        anchor="free",  # specifying x - axis has to be the fixed
-                        overlaying="y",  # specifyinfg y - axis has to be separated
-                        side="left",  # specifying the side the axis should be present
-                        position=0.06,  # specifying the position of the axis
-                        showspikes=True
-                    ),
-                    # pass the y-axis 3 title, titlefont, color and
-                    # tickfont as a dictionary and store it an
-                    # variable yaxis 3
-                    yaxis3=dict(
-                        title="RMS_1",
-                        titlefont=dict(
-                            color="#006400"
+                        # pass the y-axis 3 title, titlefont, color and
+                        # tickfont as a dictionary and store it an
+                        # variable yaxis 3
+                        yaxis3=dict(
+                            title="RMS_1",
+                            titlefont=dict(
+                                color="#006400"
+                            ),
+                            tickfont=dict(
+                                color="#006400"
+                            ),
+                            anchor="x",     # specifying x - axis has to be the fixed
+                            overlaying="y",  # specifyinfg y - axis has to be separated
+                            side="right" # specifying the side the axis should be present
+                            #position=0.85
                         ),
-                        tickfont=dict(
-                            color="#006400"
+                        
+                        # pass the y-axis 4 title, titlefont, color and
+                        # tickfont as a dictionary and store it an
+                        # variable yaxis 4
+                        yaxis4=dict(
+                            title="RMS_2",
+                            titlefont=dict(
+                                color="#7b2b2a"
+                            ),
+                            tickfont=dict(
+                                color="#7b2b2a"
+                            ),
+                            anchor="free",  # specifying x - axis has to be the fixed
+                            overlaying="y",  # specifyinfg y - axis has to be separated
+                            side="right",  # specifying the side the axis should be present
+                            position=0.98  # specifying the position of the axis
                         ),
-                        anchor="x",     # specifying x - axis has to be the fixed
-                        overlaying="y",  # specifyinfg y - axis has to be separated
-                        side="right" # specifying the side the axis should be present
-                        #position=0.85
-                    ),
-                    
-                    # pass the y-axis 4 title, titlefont, color and
-                    # tickfont as a dictionary and store it an
-                    # variable yaxis 4
-                    yaxis4=dict(
-                        title="RMS_2",
-                        titlefont=dict(
-                            color="#7b2b2a"
-                        ),
-                        tickfont=dict(
-                            color="#7b2b2a"
-                        ),
-                        anchor="free",  # specifying x - axis has to be the fixed
-                        overlaying="y",  # specifyinfg y - axis has to be separated
-                        side="right",  # specifying the side the axis should be present
-                        position=0.98  # specifying the position of the axis
-                    ),
-                    yaxis5=dict(
-                        title="RMS_3",
-                        titlefont=dict(
-                            color="#ffbb00"
-                        ),
-                        tickfont=dict(
-                            color="#ffbb00"
-                        ),
-                        anchor="free",  # specifying x - axis has to be the fixed
-                        overlaying="y",  # specifyinfg y - axis has to be separated
-                        side="left",  # specifying the side the axis should be present
-                        position=0.00  # specifying the position of the axis
+                        yaxis5=dict(
+                            title="RMS_3",
+                            titlefont=dict(
+                                color="#ffbb00"
+                            ),
+                            tickfont=dict(
+                                color="#ffbb00"
+                            ),
+                            anchor="free",  # specifying x - axis has to be the fixed
+                            overlaying="y",  # specifyinfg y - axis has to be separated
+                            side="left",  # specifying the side the axis should be present
+                            position=0.00  # specifying the position of the axis
+                        )
                     )
-                )
-                # Update layout of the plot namely title_text, width
-                # and place it in the center using title_x parameter
-                # as shown
-                large_rockwell_template = dict(
-                    layout=go.Layout(title_font=dict(family="Rockwell", size=24))
-                )
-                
-                #     #template=large_rockwell_template
-                #     # barmode='group',
-                #     #hovermode='x',#paper_bgcolor="LightSteelBlue"   
-                # )
-                fig.update_xaxes(
+                    # Update layout of the plot namely title_text, width
+                    # and place it in the center using title_x parameter
+                    # as shown
+                    large_rockwell_template = dict(
+                        layout=go.Layout(title_font=dict(family="Rockwell", size=24))
+                    )
                     
-                    rangeslider_visible=True,
-                    # rangeselector=dict(
-                    #     buttons=list([
-                    #         dict(count=1, label="1m", step="month", stepmode="backward"),
-                    #         dict(count=4000, label="6m", step="month", stepmode="backward"),
-                    #         dict(count=6000, label="YTD", step="year", stepmode="todate"),
-                    #         dict(count=12000, label="1y", step="year", stepmode="backward"),
-                    #         dict(step="all")
-                    #     ])
+                    #     #template=large_rockwell_template
+                    #     # barmode='group',
+                    #     #hovermode='x',#paper_bgcolor="LightSteelBlue"   
                     # )
-                )
-                # fig.add_annotation(
-                #     x=kk,
-                #     y=df.loc[kk,'Velocity'],
-                #     xref="x",
-                #     yref="y",
-                #     text="max=5",
-                #     showarrow=True,
-                #     font=dict(
-                #         family="Courier New, monospace",
-                #         size=16,
-                #         color="#ffffff"
-                #         ),
-                #     align="center",
-                #     arrowhead=2,
-                #     arrowsize=1,
-                #     arrowwidth=2,
-                #     arrowcolor="#636363",
-                #     ax=20,
-                #     ay=-30,
-                #     bordercolor="#c7c7c7",
-                #     borderwidth=2,
-                #     borderpad=4,
-                #     bgcolor="#ff7f0e",
-                #     opacity=0.8
-                #     )
+                    fig.update_xaxes(
+                        
+                        rangeslider_visible=True,
+                        # rangeselector=dict(
+                        #     buttons=list([
+                        #         dict(count=1, label="1m", step="month", stepmode="backward"),
+                        #         dict(count=4000, label="6m", step="month", stepmode="backward"),
+                        #         dict(count=6000, label="YTD", step="year", stepmode="todate"),
+                        #         dict(count=12000, label="1y", step="year", stepmode="backward"),
+                        #         dict(step="all")
+                        #     ])
+                        # )
+                    )
                 
-                st.plotly_chart(fig)
+                    
+                    st.plotly_chart(fig,use_container_width=True)
                 
                 with st.form("Calculate the Jump"):
                     st.write("The time where the volicity is closest to zero is:", kk)
@@ -585,10 +551,8 @@ def main():
                         jump_starts = st.number_input("Jump starts at:",value=kk,step=1)
                     with c2:
                         jump_ends = st.number_input("Jump ends at:",value=ll,step=1)
-                    submitted = st.form_submit_button("Calculate")
-
-
-                if submitted:
+                    jump_submitted = st.form_submit_button("Calculate")
+                if jump_submitted:
                     #df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
                     #Find the IMPULSE GRF
                     df['Impulse_grf'] = df.loc[jump_starts:jump_ends, 'Force'] * (1/1000)
@@ -604,18 +568,19 @@ def main():
                 col1, col2 = st.columns(2)
                 r=0  
                 
-                with st.form("Insert Users"):
+                with st.form("Select Graph Area"):
                     c1, c2= st.columns(2)
                     with c1:        
                         user_time_input_min_main_table = st.number_input("From Time",value=0,step=1)
                     with c2:
                         user_time_input_max_main_table = st.number_input("Till Time",value=0,step=1)
-                    submitted = st.form_submit_button("Submit")
+                    brushed_submitted = st.form_submit_button("show selected area")
                     
                 df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index < user_time_input_max_main_table)]
+                
 
                 ################# BRUSHED AREA ##########################
-                if len(df_brushed):
+                if brushed_submitted:
                     df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
                     #Find the IMPULSE GRF
                     df_brushed['Impulse_grf'] = df_brushed['Force'] * (1/1000)
