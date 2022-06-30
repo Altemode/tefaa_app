@@ -805,9 +805,9 @@ def main():
                 st.write('**Occupy:**', url_list[0]['occupy'])
                 if url_list[0]['kind_of_trial'] == "Vertical Jump":
                     #st.write('Platform mass is:', round(platform_mass,2), 'kg')
-                    st.write('**Start Trial starts at**:', take_off_time, 'ms')
+                    st.write('**Start Trial starts at**:', start_try_time, 'ms')
                     st.write('**Take Off Time starts at**:', take_off_time, 'ms')
-                    st.write('**Landing Time at**:', take_off_time, 'ms')
+                    st.write('**Landing Time at**:', landing_time, 'ms')
                     #st.write('Step for RMS:', rms_step)  **_really_ cool**
                     
 
