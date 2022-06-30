@@ -256,9 +256,9 @@ def main():
                 df['RMS_1'] = 0
                 df['RMS_2'] = 0
                 df['RMS_3'] = 0
-                df['Acceleration'] = " "
-                df['Start_Velocity'] = " "
-                df['Velocity'] = " "
+                df['Acceleration'] = 0
+                df['Start_Velocity'] = 0
+                df['Velocity'] = 0
                 df['Rows_Count'] = df.index
 
                 # Calculate the sum of all sensors Mass $ Weight
@@ -269,10 +269,11 @@ def main():
                 # Calculate The Column Force
                 df['Force'] = df['Mass_Sum'] * 9.81
                 # Calculate Acceleration
-                df['Acceleration'] = (df['Force'] / pm) - 9.81
-                # Calculate Velocity
-                df['Start_Velocity'] = df.Acceleration.rolling(window=2,min_periods=1).mean()*0.001
-                df['Velocity'] = df.Start_Velocity.rolling(window=999999,min_periods=1).sum()
+                if url_list[0]['kind_of_trial'] == "Vertical Jump":
+                    df['Acceleration'] = (df['Force'] / pm) - 9.81
+                    # Calculate Velocity
+                    df['Start_Velocity'] = df.Acceleration.rolling(window=2,min_periods=1).mean()*0.001
+                    df['Velocity'] = df.Start_Velocity.rolling(window=999999,min_periods=1).sum()
 
                 low_cutoff = 10 # Hz
                 high_cutoff = 450 # Hz
@@ -319,7 +320,7 @@ def main():
         ############################################################################################################                
         
         
-        #st.write(url_list[0]['kind_of_trial'])
+        
         if url_list:
             if url_list[0]['kind_of_trial'] == "Vertical Jump": # & df_url.loc[0, "kind_of_trial"] == "Vertical Jump":
                 pm, df = get_data()
@@ -335,9 +336,10 @@ def main():
                         break
             
                 for i in range(0,take_off_time):
-                    if df.loc[i,'Force'] < (df['Force'].mean() - 20):
+                    if df.loc[i,'Force'] < (df['Force'].mean() - 60):
                         start_try_time = i
                         break
+                st.write(start_try_time)
           
 
                 #Define The Whole Time Range Of Graph
@@ -347,23 +349,14 @@ def main():
                     selected_time_range = st.slider('Select the whole time range of the graph, per 100', min_time, max_time, (min_time, max_time), 100)
                 df_selected_model = (df.Rows_Count.between(selected_time_range[0], selected_time_range[1]) )
                 df = pd.DataFrame(df[df_selected_model])
-                #Values Sidebar
-                with st.sidebar.expander(("Values"), expanded=True):
-                    st.write('Name:', url_list[0]['fullname'])
-                    st.write('Type of try:', url_list[0]['kind_of_trial'])
-                    st.write('Body mass is:', round(pm,2), 'kg')
-                    st.write('Occupy:', url_list[0]['occupy'])
-                    #st.write('Platform mass is:', round(platform_mass,2), 'kg')
-                    st.write('Take Off Time starts at:', take_off_time, 'ms')
-                    #st.write('Step for RMS:', rms_step)
                 
-
                 kk = df.loc[start_try_time:take_off_time,'Velocity'].sub(0).abs().idxmin()
                 ll = (df.loc[kk:take_off_time,'Force']-df['Force'].mean()).sub(0).abs().idxmin()
 
                 with st.expander(("Graph"), expanded=True):
                     #### CREATE THE MAIN CHART #####
                     fig = go.Figure()
+                    lines_to_hide = ['Velocity',"RMS_1","RMS_2","RMS_3"]
                     # add x and y values for the 1st scatter
                     # plot and name the yaxis as yaxis1 values
                     fig.add_trace(go.Scatter(
@@ -526,6 +519,7 @@ def main():
                     #     # barmode='group',
                     #     #hovermode='x',#paper_bgcolor="LightSteelBlue"   
                     # )
+                    
                     fig.update_xaxes(
                         
                         rangeslider_visible=True,
@@ -540,41 +534,44 @@ def main():
                         # )
                     )
                 
-                    
+                    fig.for_each_trace(lambda trace: trace.update(visible="legendonly") 
+                                    if trace.name in lines_to_hide else ())
                     st.plotly_chart(fig,use_container_width=True)
-                
-                with st.form("Calculate the Jump"):
-                    st.write("The time where the volicity is closest to zero is:", kk)
-                    st.write("The time where the Force is closest to average is:", ll)
-                    c1, c2= st.columns(2)
-                    with c1:                        
-                        jump_starts = st.number_input("Jump starts at:",value=kk,step=1)
-                    with c2:
-                        jump_ends = st.number_input("Jump ends at:",value=ll,step=1)
-                    jump_submitted = st.form_submit_button("Calculate")
-                if jump_submitted:
-                    #df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
-                    #Find the IMPULSE GRF
-                    df['Impulse_grf'] = df.loc[jump_starts:jump_ends, 'Force'] * (1/1000)
-                    impulse_grf = df['Impulse_grf'].sum()
-                    #Find the IMPULSE BW
-                    impulse_bw_duration = (jump_ends - jump_starts) / 1000
-                    impulse_bw = pm * 9.81 * impulse_bw_duration
-                    velocity_momentum1 = (impulse_grf - impulse_bw) / pm
-                    jump_depending_impluse = (velocity_momentum1 ** 2) / (9.81 * 2)
-                    st.write("The Jump is:", round(jump_depending_impluse,4), "The Rsi is:", round(impulse_bw_duration/jump_depending_impluse,4))
-                
+                # Calculate the Jump
+                with st.expander("Calculation of the Jump", expanded=False):
+                    with st.form("Calculate the Jump"):
+                        st.caption("The times where the volicity is closest to zero and Force is closest to average are:")
+                        st.write(kk, ll)
+                        c1, c2= st.columns(2)
+                        with c1:                        
+                            jump_starts = st.number_input("Jump starts at:", value=kk, step=1)
+                        with c2:
+                            jump_ends = st.number_input("Jump ends at:",value=ll,step=1)
+                        jump_submitted = st.form_submit_button("Calculate")
+                    if jump_submitted:
+                        #df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index <= user_time_input_max_main_table)]
+                        #Find the IMPULSE GRF
+                        df['Impulse_grf'] = df.loc[jump_starts:jump_ends, 'Force'] * (1/1000)
+                        impulse_grf = df['Impulse_grf'].sum()
+                        #Find the IMPULSE BW
+                        impulse_bw_duration = (jump_ends - jump_starts) / 1000
+                        impulse_bw = pm * 9.81 * impulse_bw_duration
+                        velocity_momentum1 = (impulse_grf - impulse_bw) / pm
+                        jump_depending_impluse = (velocity_momentum1 ** 2) / (9.81 * 2)
+                        st.write("The Jump is:", round(jump_depending_impluse,4), "The Rsi is:", round(impulse_bw_duration/jump_depending_impluse,4))
+                    
                 
                 col1, col2 = st.columns(2)
                 r=0  
                 
-                with st.form("Select Graph Area"):
+                with st.form("Select Graph Area", clear_on_submit=False):
+                    st.caption("Input these fields to calculate specific results:")
                     c1, c2= st.columns(2)
                     with c1:        
-                        user_time_input_min_main_table = st.number_input("From Time",value=0,step=1)
+                        user_time_input_min_main_table = st.number_input("From Time", value=int(df.index.min()))
                     with c2:
-                        user_time_input_max_main_table = st.number_input("Till Time",value=0,step=1)
-                    brushed_submitted = st.form_submit_button("show selected area")
+                        user_time_input_max_main_table = st.number_input("Till Time", value=int(df.index.max()))
+                    brushed_submitted = st.form_submit_button("show selected area", help="this is hover")
                     
                 df_brushed = df[(df.index >= user_time_input_min_main_table) & (df.index < user_time_input_max_main_table)]
                 
@@ -786,10 +783,7 @@ def main():
                                 'Max': [max(df['Force']), max(df['Mass_Sum']), max(df['Velocity']), max(df['Acceleration'])],
                                 #'Max': [max(df_brushed['Force']), max(df_brushed['Mass_Sum']), max(df_brushed['Velocity']), max(df_brushed['Acceleration'])] }
                             }               
-                    #Display some Values in Sidebar
-                    st.sidebar.write('Time range from', min(df['Rows_Count']), 'to', max(df['Rows_Count']), 'ms')
-                    st.sidebar.write('Min Mass_Sum:', min(df['Mass_Sum']))
-                    st.sidebar.write('Max Mass_Sum:',  max(df['Mass_Sum']))
+                    
                     #Display Dataframe in Datatable
                     with st.expander("Show Data Table", expanded=True):
                         selected_clear_columns = st.multiselect(
@@ -802,7 +796,20 @@ def main():
                             file_name='df.csv',
                             mime='text/csv',
                         )
-
+            #Values Sidebar
+            with st.sidebar.expander(("Values"), expanded=True):
+                st.write('**Name**:', url_list[0]['fullname'])
+                st.write('**Type of try**:', url_list[0]['kind_of_trial'])
+                st.write('**File Name**:', url_list[0]['filename'])
+                st.write('**Body mass is**:', round(pm,2), 'kg')
+                st.write('**Occupy:**', url_list[0]['occupy'])
+                if url_list[0]['kind_of_trial'] == "Vertical Jump":
+                    #st.write('Platform mass is:', round(platform_mass,2), 'kg')
+                    st.write('**Start Trial starts at**:', take_off_time, 'ms')
+                    st.write('**Take Off Time starts at**:', take_off_time, 'ms')
+                    st.write('**Landing Time at**:', take_off_time, 'ms')
+                    #st.write('Step for RMS:', rms_step)  **_really_ cool**
+                    
 
         ################# ######################### ISO ##################### ########################## #################
         if 1>2:
