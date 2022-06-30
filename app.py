@@ -174,7 +174,7 @@ def main():
         #
         if url:
             storage_options = {'User-Agent': 'Mozilla/5.0'}
-            df = pd.read_csv(url, sep='\s+',storage_options=storage_options)
+            df = pd.read_csv(url,storage_options=storage_options)
             st.write(df)
 
 
