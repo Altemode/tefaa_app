@@ -1,0 +1,4 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/gethgr/public_html/tefaa
+    - /bin/cp -R * $DEPLOYPATH
