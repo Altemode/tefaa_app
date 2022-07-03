@@ -917,9 +917,9 @@ def main():
                         )
             #Values Sidebar
             with st.sidebar.expander(("Values"), expanded=True):
-                st.write('**Name**:', url_list[0]['fullname'])
-                st.write('**Type of try**:', url_list[0]['kind_of_trial'])
-                st.write('**File Name**:', url_list[0]['filename'])
+                st.write('**Name**:', selected_rows.loc[0,'fullname'])
+                st.write('**Type of try**:', selected_rows.loc[0,'kind_of_trial'])
+                st.write('**File Name**:', selected_rows.loc[0,'filename'])
                 st.write('**Body mass is**:', round(pm,2), 'kg')
                 st.write('**Occupy:**', url_list[0]['occupy'])
                 if url_list[0]['kind_of_trial'] == "Vertical Jump":
