@@ -921,8 +921,8 @@ def main():
                 st.write('**Type of try**:', selected_rows.loc[0,'kind_of_trial'])
                 st.write('**File Name**:', selected_rows.loc[0,'filename'])
                 st.write('**Body mass is**:', round(pm,2), 'kg')
-                st.write('**Occupy:**', url_list[0]['occupy'])
-                if url_list[0]['kind_of_trial'] == "Vertical Jump":
+                st.write('**Occupy:**', selected_rows.loc[0,'occupy'])
+                if selected_rows.loc[0,'kind_of_trial'] == "Vertical Jump":
                     #st.write('Platform mass is:', round(platform_mass,2), 'kg')
                     st.write('**Start Trial starts at**:', start_try_time, 'ms')
                     st.write('**Take Off Time starts at**:', take_off_time, 'ms')
