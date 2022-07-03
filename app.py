@@ -830,9 +830,9 @@ def main():
                     specific_metrics = [""]
                     specific_metrics = {#'Unit': ['results'],
                     
-                            'Fullname' : url_list[0]['fullname'],
-                            'Occupy' : url_list[0]['occupy'],
-                            'Type of try' : url_list[0]['kind_of_trial'],
+                            'Fullname' : selected_rows.loc[0,'fullname'],
+                            'Occupy' : selected_rows.loc[0,'occupy'],
+                            'Type of try' : selected_rows.loc[0,'kind_of_trial'],
                             'Body Mass (kg)': [pm],
                             'Jump (Velocity Take Off) (m/s)' : [jump_depending_impluse],
                             'Start trial time (s)' : [start_try_time],
