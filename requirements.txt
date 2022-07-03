@@ -11,3 +11,4 @@ streamlit==1.10.0
 streamlit_vega_lite==0.1.0
 supabase==0.5.8
 sympy==1.10.1
+streamlit-aggrid == 0.2.3.post2
