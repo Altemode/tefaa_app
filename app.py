@@ -4,7 +4,11 @@ import pandas as pd
 import numpy as np
 from supabase import create_client, Client
 
-#from st_aggrid import AgGrid
+from st_aggrid import AgGrid
+from st_aggrid.grid_options_builder import GridOptionsBuilder
+from st_aggrid.shared import GridUpdateMode
+
+
 import altair as alt
 import biosignalsnotebooks as bsnb
 
@@ -92,22 +96,38 @@ def main():
                 min_time = int(df_raw_data.index.min())
                 max_time = int(df_raw_data.index.max())
                 selected_time_range = st.slider('Select the whole time range of the graph, per 100', min_time, max_time, (min_time, max_time), 1)
-                df_selected_model = (df_raw_data.Rows_Count.between(selected_time_range[0], selected_time_range[1]) )
-                df_prepared = pd.DataFrame(df_raw_data[df_selected_model])
+                selected_area = (df_raw_data.Rows_Count.between(selected_time_range[0], selected_time_range[1]) )
+                df_prepared = pd.DataFrame(df_raw_data[selected_area])
+                
                 st.line_chart(df_prepared['Mass_Sum'])
+                # To Drop the unnecessary Columns
                 df_prepared.drop(['Rows_Count'], axis = 1, inplace=True)
                 filename = uploaded_file.name
+                # To Get only the filename without extension (.txt)
                 final_filename = os.path.splitext(filename)[0]
                 st.write("The file name of your file is : ", final_filename)
                 show_df_prepared = st.checkbox("Display the final dataframe")
                 if show_df_prepared:
                     st.dataframe(df_prepared)
-                st.download_button(
-                    label="Export File",
-                    data=df_prepared.to_csv(),
-                    file_name=final_filename +'.csv',
-                    mime='text/csv',
-                )
+                # if platform_mass >1:
+                #     st.download_button(
+                #         label="Export File",
+                #         data=df_prepared.to_csv(index=False),
+                #         file_name=final_filename +'.csv',
+                #         mime='text/csv',
+                #     )
+
+
+                export = st.checkbox('Verify you have insert proper Platform Mass Value:')
+
+                if export:
+                    st.success("You are able to export your data.")
+                    st.download_button(
+                        label="Export File",
+                        data=df_prepared.to_csv(index=False),
+                        file_name=final_filename +'.csv',
+                        mime='text/csv',
+                    )
 
 
 
@@ -145,19 +165,23 @@ def main():
             filepath = st.file_uploader("Choose a file")
             #checkbox_val = st.checkbox("Form checkbox")
             submitted = st.form_submit_button("Submit values")
+        
             if submitted:
-                filename = filepath.name
-                filepath="https://darbnwsgqztqlimdtugr.supabase.co/storage/v1/object/public/files-of-trials/" + filename
-                st.write(type(filename))         
-                list = (fullname,email,occupy,kind_of_trial,filename)
-                def add_entries_to_main_table(supabase):
-                    value = {'fullname': fullname, 'email': email, 'occupy': occupy, 'kind_of_trial': kind_of_trial, 'occupy': occupy, 'filename':filename, "filepath": filepath }
-                    data = supabase.table('main_table').insert(value).execute()
-                def main():
-                    new_entry = add_entries_to_main_table(con)
-                main()
-                st.success('Thank you! A new entry has been inserted to database!')
-                st.write(list)
+                if fullname and email and occupy and kind_of_trial !='-' and filepath:
+                    filename = filepath.name
+                    filepath="https://darbnwsgqztqlimdtugr.supabase.co/storage/v1/object/public/files-of-trials/" + filename
+                    st.write(type(filename))         
+                    list = (fullname,email,occupy,kind_of_trial,filename)
+                    def add_entries_to_main_table(supabase):
+                        value = {'fullname': fullname, 'email': email, 'occupy': occupy, 'kind_of_trial': kind_of_trial, 'occupy': occupy, 'filename':filename, "filepath": filepath }
+                        data = supabase.table('main_table').insert(value).execute()
+                    def main():
+                        new_entry = add_entries_to_main_table(con)
+                    main()
+                    st.success('Thank you! A new entry has been inserted to database!')
+                    st.write(list)
+                else:
+                    st.error("One of the field values is missing")
         #@st.experimental_memo(ttl=200)
         def select_all_from_main_table():
             query=con.table("main_table").select("*").execute()
@@ -198,46 +222,77 @@ def main():
         con = init_connection()
 
         url_list=[]
-        with st.expander("Show all entries"):
+        with st.expander("From here you may display and calculate results from any entry of the database!", expanded=True):
             #uploaded_file = st.file_uploader("Choose a file1")
-            @st.experimental_memo(ttl=100)
+            #@st.experimental_memo(ttl=100)
             def select_all_from_main_table():
                 query=con.table("main_table").select("*").execute()
                 return query
             main_table_all = select_all_from_main_table()
             df_all_from_main_table = pd.DataFrame(main_table_all.data)
             #Display The whole table with persons:
-            display_all_from_main_table = st.checkbox('Show All Entries')
+            display_all_from_main_table = st.checkbox('Display all trials', value=True)
             if display_all_from_main_table:
-                st.dataframe(df_all_from_main_table)
-                #AgGrid(df_all_from_main_table)
+                #st.dataframe(df_all_from_main_table)
+                # add this
+            # gb = GridOptionsBuilder.from_dataframe(df_all_from_main_table)
+            # gb.configure_pagination()
+            # gridOptions = gb.build()
 
-            url_id = st.number_input("Paste the ID of your link",value=0,step=1)
+            # AgGrid(df_all_from_main_table, gridOptions=gridOptions)
+##################
+                gb = GridOptionsBuilder.from_dataframe(df_all_from_main_table)
+
+                gb.configure_pagination()
+                gb.configure_side_bar()
+                gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+                gb.configure_default_column(groupable=True, value=True, enableRowGroup=True, aggFunc="sum", editable=True)
+                gridOptions = gb.build()
+
+                #AgGrid(df_all_from_main_table, gridOptions=gridOptions, enable_enterprise_modules=True)
+                data = AgGrid(df_all_from_main_table, 
+                                gridOptions=gridOptions, 
+                                enable_enterprise_modules=True, 
+                                allow_unsafe_jscode=True, 
+                                update_mode=GridUpdateMode.SELECTION_CHANGED)
+                selected_rows = data["selected_rows"]
+                selected_rows = pd.DataFrame(selected_rows)
+                st.write(selected_rows)
+
+
+
+
+
+            #AgGrid(df_all_from_main_table)
+
+            #url_id = st.number_input("Type the ID of the person you want to calculate results of the current trial.",value=0,step=1)
             # with st.form("Paste the ID of your link"):   
             #         url_id = st.number_input("Paste the ID of your link",value=0,step=1)
             #         id_submitted = st.form_submit_button("Display Results")
-            if url_id:
-                def select_filepath_from_specific_id():
-                    query=con.table("main_table").select("*").eq("id", url_id).execute()
-                    return query
-                url_query = select_filepath_from_specific_id()   
-                url_list =  url_query.data
+            # if url_id:
+            #     def select_filepath_from_specific_id():
+            #         query=con.table("main_table").select("*").eq("id", url_id).execute()
+            #         return query
+            #     url_query = select_filepath_from_specific_id()   
+            #     url_list =  url_query.data
                 
-                if url_list:
-                    #df_url = pd.DataFrame(url_query.data)
-                    url = url_list[0]['filepath']
-                    st.write(url_list[0]['filepath'])
+            #     if url_list:
+            #         #df_url = pd.DataFrame(url_query.data)
+            #         url = url_list[0]['filepath'].replace(" ", "%20")
+            #         #t.text.replace(" ", "%20")
+            #         st.write(url_list[0]['filepath'].replace(" ", "%20"))
                     
                     
-                else:
-                    st.write("There is no entry with this id")
+            #     else:
+            #         st.write("There is no entry with this id")
 
         #@st.cache(allow_output_mutation=True)
         def get_data():
-            if url:
+            if not selected_rows.empty:
+                
                 
                 storage_options = {'User-Agent': 'Mozilla/5.0'}
-                df = pd.read_csv(url, storage_options=storage_options)
+                df = pd.read_csv(selected_rows.loc[0,'filepath'].replace(" ", "%20"), storage_options=storage_options)
                 # #Define Header columns
                 columns_count = len(df.axes[1])
                 # if columns_count == 8:
@@ -269,7 +324,7 @@ def main():
                 # Calculate The Column Force
                 df['Force'] = df['Mass_Sum'] * 9.81
                 # Calculate Acceleration
-                if url_list[0]['kind_of_trial'] == "Vertical Jump":
+                if selected_rows.loc[0,'kind_of_trial'] == "Vertical Jump":
                     df['Acceleration'] = (df['Force'] / pm) - 9.81
                     # Calculate Velocity
                     df['Start_Velocity'] = df.Acceleration.rolling(window=2,min_periods=1).mean()*0.001
@@ -321,8 +376,8 @@ def main():
         
         
         
-        if url_list:
-            if url_list[0]['kind_of_trial'] == "Vertical Jump": # & df_url.loc[0, "kind_of_trial"] == "Vertical Jump":
+        if not selected_rows.empty:
+            if selected_rows.loc[0,'kind_of_trial'] == "Vertical Jump": # & df_url.loc[0, "kind_of_trial"] == "Vertical Jump":
                 pm, df = get_data()
                                 
                 for i in range (0, len(df.index)):
@@ -340,7 +395,7 @@ def main():
                         start_try_time = i
                         break
                 
-          
+                st.write("Fullname :", selected_rows.loc[0,'fullname'])
 
                 #Define The Whole Time Range Of Graph
                 min_time = int(df.index.min())
@@ -448,6 +503,7 @@ def main():
                             spikedash="dot",
                             spikecolor="#999999",
                             spikemode="toaxis",
+                            
                         ),
                         # pass the y-axis 2 title, titlefont, color and
                         # tickfont as a dictionary and store it an
@@ -464,7 +520,16 @@ def main():
                             overlaying="y",  # specifyinfg y - axis has to be separated
                             side="left",  # specifying the side the axis should be present
                             position=0.06,  # specifying the position of the axis
-                            showspikes=True
+
+                            linecolor="#BCCCDC",
+                            showspikes=True,
+                            # spikethickness=2,
+                            # spikedash="dot",
+                            # spikecolor="#999999",
+                            # spikemode="toaxis",
+
+                            
+                            
                         ),
                         # pass the y-axis 3 title, titlefont, color and
                         # tickfont as a dictionary and store it an
