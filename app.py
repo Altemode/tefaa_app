@@ -241,8 +241,17 @@ def main():
 
             # AgGrid(df_all_from_main_table, gridOptions=gridOptions)
 ##################
-                gb = GridOptionsBuilder.from_dataframe(df_all_from_main_table)
+                
 
+                #AgGrid(df_all_from_main_table)
+
+
+
+
+
+
+##############################################################################################
+                gb = GridOptionsBuilder.from_dataframe(df_all_from_main_table)
                 gb.configure_pagination()
                 gb.configure_side_bar()
                 gb.configure_selection(selection_mode="multiple", use_checkbox=True)
@@ -252,7 +261,7 @@ def main():
                 #AgGrid(df_all_from_main_table, gridOptions=gridOptions, enable_enterprise_modules=True)
                 data = AgGrid(df_all_from_main_table, 
                                 gridOptions=gridOptions, 
-                                enable_enterprise_modules=True, 
+                                #enable_enterprise_modules=True, 
                                 allow_unsafe_jscode=True, 
                                 update_mode=GridUpdateMode.SELECTION_CHANGED)
                 selected_rows = data["selected_rows"]
@@ -710,9 +719,11 @@ def main():
 
                     #Find the RFD linear igression
                     l_rfd1=[]
+                    
                     l_emg1=[]
                     l_emg2=[]
                     l_emg3=[]
+                    b_rfd1=[]
                     b_rfd1=[]
                     b_emg1=[]
                     b_emg2=[]
@@ -732,8 +743,10 @@ def main():
                         b_rfd1 = (X*Y).sum() / (X ** 2).sum()
                         headers_list_rfd1.append("RFD-"+str(i))
                         l_rfd1.append(b_rfd1)
+                        
                         #FIND R-EMG
                         X = df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'] - df_brushed.loc[user_time_input_min_main_table:i:1,'Rows_Count'].mean()
+
                         Y1 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signal_EMG_1'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signal_EMG_1'].mean()
                         Y2 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signal_EMG_2'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signal_EMG_2'].mean()
                         Y3 = df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signal_EMG_3'] - df_brushed.loc[user_time_input_min_main_table:i:1,'pre_pro_signal_EMG_3'].mean()
